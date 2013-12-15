@@ -1,0 +1,6 @@
+ # Cloud yaml for deployment
+ cloud:
+    name: aws
+    properties:
+        aws_access_key_id: "987654321BA"
+        aws_secret_access_key: "123456789AB"

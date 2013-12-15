@@ -1,0 +1,22 @@
+#test deployment yaml for aws
+
+workflow:
+    # 1 = deployment workflow type
+    workflow_type: 1
+    stack:
+        name: awstest1
+        version: 1.0
+        edited_by: sujeetv
+        vcs: git
+        vcs_url: http://www.github.com/stack1/
+        roles:
+            - name: role1
+              version: "1.0"
+              instances: 2
+
+            - name: role2
+              version: "1.1"
+              instances: 1
+
+            - name: role3
+              version: "2.0"

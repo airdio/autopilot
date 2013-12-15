@@ -1,0 +1,9 @@
+--- dependencies for all components
+master:
+    - name: tornado
+      package: tornado
+      installer: pip
+worker:
+    - name: pyyaml
+      package: pyyaml
+      installer: pip
