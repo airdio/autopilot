@@ -4,10 +4,10 @@ __author__ = 'sujeet'
 import os
 import os.path
 import sys
-sys.path.append(os.environ['AUTOPILOT_DEV'] + '/../')
+sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
 
 from autopilot.workflows.tasks.task import Task
-from autopilot.workflows.taskstack import Taskstack
+from autopilot.workflows.tasks.taskstack import Taskstack
 from autopilot.test.aptest import APtest
 
 
@@ -39,9 +39,8 @@ class TaskstackTest(APtest):
 
 
 class TouchfileTask(Task):
-
     def __init__(self, file_name):
-        Task.__init__(self, file_name)
+        Task.__init__(self, "Touchfile", None, None)
         self.file_name = file_name
 
     def run(self):

@@ -1,0 +1,9 @@
+#test minimum deployment file
+
+stack:
+    name: awstest1
+    version: 1.0
+    edited_by: sujeetv
+    roles:
+        - name: role1
+          version: "1.0"

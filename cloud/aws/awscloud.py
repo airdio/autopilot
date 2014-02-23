@@ -1,6 +1,5 @@
 #! /user/bin python
 
-import yaml
 from autopilot.cloud.cloud import Cloud
 
 
@@ -14,9 +13,8 @@ class AWScloud(Cloud):
         self.aws_secret_access_key = aws_secret_access_key
 
     @staticmethod
-    def resolve_cloud(cloud_config, statusf=None):
-        cloudd = yaml.load(open(cloud_config))
-        propd = cloudd["cloud"]["properties"]
+    def resolve_cloud(configd, statusf=None):
+        propd = configd["cloud"]["properties"]
         return AWScloud(propd["aws_access_key_id"], propd["aws_secret_access_key"], statusf)
 
     def validate_environment(self):

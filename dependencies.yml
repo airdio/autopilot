@@ -1,9 +1,15 @@
 --- dependencies for all components
+
+common:
+    - boto
+    - tornado
+    - iptools
+    - decorator
+    - iso8601
+    - pyyaml
+    - simplejson
+    - scp
+    - paramiko
 master:
-    - name: tornado
-      package: tornado
-      installer: pip
+
 worker:
-    - name: pyyaml
-      package: pyyaml
-      installer: pip

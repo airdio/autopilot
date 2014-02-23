@@ -3,9 +3,13 @@
 import os
 import os.path
 import sys
-sys.path.append(os.environ['AUTOPILOT_DEV'] + '/../')
+import yaml
+sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
+from autopilot.workflows.workflowtype import WorkflowType
 from autopilot.test.aptest import APtest
-from autopilot.workflows.workflowcontext import WorkflowContext
+from autopilot.stack.deploymentcontext import DeploymentContext
+from autopilot.environment.apenv import ApEnv
+
 
 class DeploymentContextTest(APtest):
     """ Deployment context tests
@@ -13,16 +17,17 @@ class DeploymentContextTest(APtest):
     def setUp(self):
         self.context_file = ""
 
-    def test_parse(self):
-        context = WorkflowContext("deployment.yml", "aws.yml")
-        self.ae(WorkflowContext.Type.Deployment,  context.type)
+    def test_parse_deployment(self):
+        apenv = ApEnv()
+        context = DeploymentContext(apenv, yaml.load(open("deployment.yml")), yaml.load(open("aws.yml")))
+        self.ae(WorkflowType.Deployment,  context.workflow_type)
         self.ae("awstest1", context.stack.name)
         self.ae(3, len(context.stack.roles))
         self.ae("role1", context.stack.roles["role1"].name)
         self.ae(2, context.stack.roles["role1"].instances)
         self.ae("1.0", context.stack.roles["role1"].version)
-        self.ae("git", context.stack.vcs)
-        self.ae("http://www.github.com/stack1/", context.stack.vcs_url)
+        self.ae("git", context.stack.vcs.target)
+        self.ae("http://www.github.com/stack1/", context.stack.vcs.url)
 
         # roles
         self.ae("role2", context.stack.roles["role2"].name)
@@ -37,3 +42,20 @@ class DeploymentContextTest(APtest):
         self.ae("<class 'autopilot.cloud.awscloud.AWScloud'>", str(type(context.cloud)))
         self.ae("987654321BA", context.cloud.aws_access_key_id)
         self.ae("123456789AB", context.cloud.aws_secret_access_key)
+
+    def test_parse_min_deployment(self):
+        apenv = ApEnv({"vcs_target": "git", "vcs_url": "http://www.github.com/"})
+        context = DeploymentContext(apenv, yaml.load(open("deployment_min.yml")))
+        self.ae(WorkflowType.Deployment,  context.workflow_type)
+        self.ae("awstest1", context.stack.name)
+        self.ae(1, len(context.stack.roles))
+        self.ae("role1", context.stack.roles["role1"].name)
+        self.ae(1, context.stack.roles["role1"].instances)
+        self.ae("1.0", context.stack.roles["role1"].version)
+        self.ae("git", context.stack.vcs.target)
+        self.ae("http://www.github.com/awstest1", context.stack.vcs.url)
+
+        #provider
+        #self.ae("<class 'autopilot.cloud.awscloud.AWScloud'>", str(type(context.cloud)))
+        #self.ae("987654321BA", context.cloud.aws_access_key_id)
+        #self.ae("123456789AB", context.cloud.aws_secret_access_key)
