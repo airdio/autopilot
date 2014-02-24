@@ -547,9 +547,9 @@ class Dct(object):
     """
     """
     @staticmethod
-    def get(dict, key, default=None, throw=False):
+    def get(dict, key, default=None):
         val = dict.get(key, default)
-        if val == default and throw is True:
+        if val is None:
             raise Exception("Expected value for key {0}.".format(key))
         return val
 

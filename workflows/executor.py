@@ -17,19 +17,18 @@ class WorkflowExecutor(object):
         self.success = False
 
     def execute(self):
-        if self.taskset.isParallel:
+        if self.taskset.parallel:
             self._execute_parallel()
         else:
-            self.execute_serial()
+            self._execute_serial()
 
     @gen.engine
     def _execute_serial(self):
-        task_count = len(self.taskset)
+        task_count = len(self.taskset.tasks)
         tasks_finished = 0
-        for task in self.taskset:
+        for task in self.taskset.tasks:
             #track each task so that we can rollback if needed
             self.tracker.push(task)
-
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
@@ -39,6 +38,7 @@ class WorkflowExecutor(object):
             # if all tasks are done OR a single task fails then we break
             if task.result.state == TaskState.Done:
                 if task_count == tasks_finished:
+                    self.success = True
                     break
             else:
                 self.success = False

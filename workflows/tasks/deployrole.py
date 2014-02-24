@@ -3,23 +3,23 @@ from autopilot.workflows.tasks.task import Task
 from autopilot.workflows.tasks.taskresult import TaskResult, TaskState
 
 
-class Deploy_Role(Task):
+class DeployRole(Task):
     """
     Provisions a role to 1 or more instances
     Always runs as part of a workflow
     """
-    Name = "deploy_role"
+    Name = "Deploy Role"
 
     def __init__(self, cloud, props):
-        Task(Deploy_Role.Name, cloud, props)
+        Task(DeployRole.Name, cloud, props)
+        self.result = TaskResult(self, TaskState.Initialized)
 
     def run(self, callback):
-        self.task_result = TaskResult(self, TaskState.Initialized)
+        self.result.state = TaskState.Done
 
     def rollback(self):
         """
         De-provision or rollback to a previous version
         """
         pass
-
 

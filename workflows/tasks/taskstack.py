@@ -2,7 +2,7 @@ __author__ = 'sujeet'
 
 
 class Taskstack(object):
-    """ Holds a stacj of tasks and rewinds in the opposite order added
+    """ Holds a stack of tasks and rewinds in the opposite order added
     """
     def __init__(self,):
         self.tasks = []

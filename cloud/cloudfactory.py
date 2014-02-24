@@ -1,6 +1,6 @@
 #! /usr/bin python
-from autopilot.common.dct import Dct
-from cloud.aws.awscloud import AWScloud
+from autopilot.common.utils import Dct
+from autopilot.cloud.aws.awscloud import AWScloud
 
 
 class CloudFactory(object):

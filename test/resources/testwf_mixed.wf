@@ -1,0 +1,49 @@
+{
+    "wf_id": "wf_id1",
+    "type": "deployment",
+    "target": "aptest",
+    "token": "sujeetv",
+    "environment": {
+        "type": "development"
+    },
+    "audit": {
+        "initiated_by": "sujeetv",
+        "datetime": 123214334
+    },
+    "cloud": {
+        "target": "aws",
+        "properties": {
+            "aws_access_key_id": "987654321BA",
+            "aws_secret_access_key": "123456789AB"}},
+    "taskset": {
+        "parallel": false,
+        "tasks": [{
+            "name": "Touchfile",
+            "properties": {
+                "label": "deployment of a role touch",
+                "notification": true,
+                "version": "1.0",
+                "instances": 1,
+                "file_path": "/tmp/file1",
+                "vcs": {
+                    "type": "git",
+                    "url": "https://www.github.com/aptest"
+                    }
+                }
+            },
+            {
+            "name": "Touchfile",
+            "properties": {
+                "label": "deployment of a role touch",
+                "notification": true,
+                "version": "1.0",
+                "instances": 1,
+                "file_path": "/tmp/file2",
+                "vcs": {
+                    "type": "git",
+                    "url": "https://www.github.com/aptest"
+                    }
+                }
+            }]
+     }
+}

@@ -3,7 +3,7 @@
 import os
 
 from autopilot.common.logger import log
-from cloud.aws import static
+#from cloud.aws import static
 
 class AutopilotException(Exception):
     def __init__(self, *args):

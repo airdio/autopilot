@@ -1,5 +1,6 @@
 #! /usr/bin python
 
+import os
 import unittest
 
 
@@ -14,3 +15,7 @@ class APtest(unittest.TestCase):
 
     def af(self, expr, msg=None):
         self.assertFalse(expr, msg)
+
+    def openf(self, path):
+        fp = os.path.join("resources", path)
+        return open(fp)

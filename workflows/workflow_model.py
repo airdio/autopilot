@@ -1,6 +1,7 @@
 #! /usr/bin python
 import simplejson
 from autopilot.common.utils import Dct
+from autopilot.workflows.tasks.task import TaskSet
 from autopilot.workflows.tasks.taskfactory import TaskFactory
 from autopilot.cloud.cloudfactory import CloudFactory
 from autopilot.workflows.executor import WorkflowExecutor
@@ -8,7 +9,8 @@ from autopilot.workflows.executor import WorkflowExecutor
 class WorkflowModel(object):
     """ Define a workflow mode
     """
-    def __init__(self, wf_id, type, target, token, audit, cloud, taskset):
+    def __init__(self, apenv, wf_id, type, target, token, audit, cloud, taskset):
+        self.apenv = apenv
         self.wf_id = wf_id
         self.type = type
         self.target = target
@@ -18,29 +20,30 @@ class WorkflowModel(object):
         self.taskset = taskset
         self.parallel = True
 
-    def run(self):
-        wfe = WorkflowExecutor(self)
-        wfe.execute()
+    def get_executor(self):
+        return WorkflowExecutor(self)
 
     @staticmethod
-    def loads(model_str):
+    def loads(apenv, model_str):
         dct = simplejson.loads(model_str)
-        cloud = Dct.get(dct, "cloud", True)
-        return WorkflowModel(Dct.get(dct, "wf_id", True),
-                             Dct.get(dct, "type", True),
-                             Dct.get(dct, "target", True),
-                             Dct.get(dct, "token", True),
-                             Dct.get(dct, "audit", True),
+        cloud = Dct.get(dct, "cloud")
+        wf_id = Dct.get(dct, "wf_id")
+        return WorkflowModel(apenv,
+                             wf_id,
+                             Dct.get(dct, "type"),
+                             Dct.get(dct, "target"),
+                             Dct.get(dct, "token"),
+                             Dct.get(dct, "audit"),
                              WorkflowModel._get_cloud(cloud),
-                             WorkflowModel._get_tasks(cloud, Dct.get(dct, "taskset", True)))
+                             WorkflowModel._get_tasks(wf_id, apenv, cloud, Dct.get(dct, "taskset")))
 
     @staticmethod
     def _get_cloud(cloud_dict):
         """
         resolve cloud instance
         """
-        target = Dct.get(cloud_dict, "target", True)
-        props = Dct.get(cloud_dict, "properties", True)
+        target = Dct.get(cloud_dict, "target")
+        props = Dct.get(cloud_dict, "properties")
         #todo: get aws access keys from the environment
         return CloudFactory.create(target, props)
 
@@ -48,11 +51,12 @@ class WorkflowModel(object):
     Resolves task instances
     """
     @staticmethod
-    def _get_tasks(cloud, tasksetd):
-        tasks = []
-        for taskd in tasksetd:
-            tasks.append(TaskFactory.create(cloud, Dct.get(taskd, "task", True),
+    def _get_tasks(wf_id, apenv, cloud, tasksetd):
+        taskset = TaskSet(Dct.get(tasksetd, "parallel"))
+        tasksd = Dct.get(tasksetd, "tasks", [])
+        for taskd in tasksd:
+            taskset.tasks.append(TaskFactory.create(apenv, wf_id, cloud, Dct.get(taskd, "name"),
                          Dct.get(taskd, "properties")))
-        return tasks
+        return taskset
 
 

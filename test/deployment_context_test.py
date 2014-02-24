@@ -7,8 +7,8 @@ import yaml
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
 from autopilot.workflows.workflowtype import WorkflowType
 from autopilot.test.aptest import APtest
-from autopilot.stack.deploymentcontext import DeploymentContext
-from autopilot.environment.apenv import ApEnv
+from autopilot.clientcontext.deploymentcontext import DeploymentContext
+from autopilot.common.apenv import ApEnv
 
 
 class DeploymentContextTest(APtest):
@@ -19,7 +19,7 @@ class DeploymentContextTest(APtest):
 
     def test_parse_deployment(self):
         apenv = ApEnv()
-        context = DeploymentContext(apenv, yaml.load(open("deployment.yml")), yaml.load(open("aws.yml")))
+        context = DeploymentContext(apenv, yaml.load(self.openf("deployment.yml")), yaml.load(self.openf("aws.yml")))
         self.ae(WorkflowType.Deployment,  context.workflow_type)
         self.ae("awstest1", context.stack.name)
         self.ae(3, len(context.stack.roles))
@@ -39,13 +39,13 @@ class DeploymentContextTest(APtest):
         self.ae("2.0", context.stack.roles["role3"].version)
 
         #provider
-        self.ae("<class 'autopilot.cloud.awscloud.AWScloud'>", str(type(context.cloud)))
+        self.ae("<class 'autopilot.cloud.aws.awscloud.AWScloud'>", str(type(context.cloud)))
         self.ae("987654321BA", context.cloud.aws_access_key_id)
         self.ae("123456789AB", context.cloud.aws_secret_access_key)
 
     def test_parse_min_deployment(self):
         apenv = ApEnv({"vcs_target": "git", "vcs_url": "http://www.github.com/"})
-        context = DeploymentContext(apenv, yaml.load(open("deployment_min.yml")))
+        context = DeploymentContext(apenv, yaml.load(self.openf("deployment_min.yml")))
         self.ae(WorkflowType.Deployment,  context.workflow_type)
         self.ae("awstest1", context.stack.name)
         self.ae(1, len(context.stack.roles))

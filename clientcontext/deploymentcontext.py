@@ -3,7 +3,7 @@
 from autopilot.workflows.workflowtype import WorkflowType
 from autopilot.clientcontext.stack import Stack
 from autopilot.clientcontext.role import Role
-from cloud.aws.awscloud import AWScloud
+from autopilot.cloud.aws.awscloud import AWScloud
 from autopilot.vcs.vcs import Vcs
 
 

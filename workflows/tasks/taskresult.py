@@ -21,6 +21,6 @@ class TaskResult(object):
         self.state_change_stack = [self.state]
 
     def update(self, message, new_state):
-        if self.task_state != new_state:
+        if self.state != new_state:
             self.state = new_state
             self.state_change_stack.append(new_state)
