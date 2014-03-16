@@ -7,24 +7,20 @@ from autopilot.workflows.tasks.task import Task
 from autopilot.workflows.tasks.taskresult import TaskState
 
 
-class TouchfileTask(Task):
-    def __init__(self, apenv, wf_id, file_name):
-        Task.__init__(self, apenv, "Touchfile", wf_id, None, None)
-        self.file_name = file_name
-        self.fi = fi
+class TouchfileFailTask(Task):
+    def __init__(self, apenv, wf_id, cloud, properties):
+        Task.__init__(self, apenv, "Touchfile", wf_id, cloud, properties)
+        self.file_name = self.properties["file_path"]
 
     def run(self, callback):
-        f = open(self.file_name, 'w')
-        f.close()
-        callback(self)
+        raise Exception("exception from TouchFileFailTask")
 
-    def rollback(self):
-        self.rolledback = True
-        os.remove(self.file_name)
-        callable(self)
+    def rollback(self, callback):
+        if os.path.isfile(self.file_name):
+            os.remove(self.file_name)
+        Task.rollback(self, callback)
 
-
-class TouchfileTask2(Task):
+class TouchfileTask(Task):
     def __init__(self, apenv, wf_id, cloud, properties):
         Task.__init__(self, apenv, "Touchfile", wf_id, cloud, properties)
         self.file_name = self.properties["file_path"]
@@ -35,7 +31,6 @@ class TouchfileTask2(Task):
         self.result.update("Done", TaskState.Done)
         callback(self)
 
-    def rollback(self):
-        self.rolledback = True
+    def rollback(self, callback):
         os.remove(self.file_name)
-        callable(self)
+        Task.rollback(self, callback)

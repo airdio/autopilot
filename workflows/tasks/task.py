@@ -19,9 +19,10 @@ class Task(object):
         self.result.update("Done", TaskState.Done)
         self.callback(self)
 
-    def rollback(self):
+    def rollback(self, callback):
         self.rolledback = True
-        pass
+        self.result.update("Rolledback", TaskState.Error)
+        callback(self)
 
 class TaskSet(object):
     """

@@ -7,14 +7,16 @@ from autopilot.workflows.tasks.taskresult import TaskResult, TaskState
 
 
 class WorkflowExecutor(object):
-    """ Executes a given workflow
-        and manages its life cycle
+    """
+    Executes a given workflow
+    and manages its life cycle
     """
     def __init__(self, model):
         self.model = model
         self.taskset = self.model.taskset
         self.tracker = Taskstack()
         self.success = False
+        self.exceptions = []
 
     def execute(self):
         if self.taskset.parallel:
@@ -32,18 +34,23 @@ class WorkflowExecutor(object):
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
-            yield gen.Task(task.run)
-            tasks_finished += 1
-
-            # if all tasks are done OR a single task fails then we break
-            if task.result.state == TaskState.Done:
-                if task_count == tasks_finished:
-                    self.success = True
+            try:
+                yield gen.Task(task.run)
+                tasks_finished += 1
+            except:
+                #todo: debug logging
+                task.result.state = TaskState.Error
+            finally:
+                # if all tasks are done OR a single task fails then we break
+                if task.result.state == TaskState.Done:
+                    if task_count == tasks_finished:
+                        self.success = True
+                        break
+                else:
+                    self.success = False
                     break
-            else:
-                self.success = False
-                break
-        #senf notification of the result
+
+        #send notification of the result
         self._cleanup()
 
     def _execute_parallel(self):
@@ -52,6 +59,7 @@ class WorkflowExecutor(object):
 
     def _cleanup(self):
         if self.success:
+            # post status along with logs and exceptions
             pass
         else:
             self.tracker.rewind()

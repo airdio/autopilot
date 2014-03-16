@@ -1,6 +1,6 @@
 __author__ = 'sujeet'
 
-
+from tornado import gen
 class Taskstack(object):
     """ Holds a stack of tasks and rewinds in the opposite order added
     """
@@ -12,9 +12,10 @@ class Taskstack(object):
         """
         self.tasks.append(task)
 
+    @gen.engine
     def rewind(self):
         """ Calls rollback on the tasks in the reverse order
         """
         for t in self.tasks[::-1]:
-            t.rollback()
+            yield gen.Task(t.rollback)
         self.tasks = []
