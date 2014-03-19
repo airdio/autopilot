@@ -4,7 +4,7 @@ from autopilot.common.utils import Dct
 from autopilot.workflows.tasks.task import TaskSet
 from autopilot.workflows.tasks.taskfactory import TaskFactory
 from autopilot.cloud.cloudfactory import CloudFactory
-from autopilot.workflows.executor import WorkflowExecutor
+from autopilot.workflows.workflowexecutor import WorkflowExecutor
 
 class WorkflowModel(object):
     """ Define a workflow mode

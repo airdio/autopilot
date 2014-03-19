@@ -17,8 +17,13 @@ class WorkflowExecutor(object):
         self.tracker = Taskstack()
         self.success = False
         self.exceptions = []
+        self.executed_once = False
 
     def execute(self):
+        if self.executed_once:
+            #raise WorkflowRentrantException(self.model)
+            pass
+        self.executed_once = True
         if self.taskset.parallel:
             self._execute_parallel()
         else:
@@ -26,36 +31,32 @@ class WorkflowExecutor(object):
 
     @gen.engine
     def _execute_serial(self):
-        task_count = len(self.taskset.tasks)
-        tasks_finished = 0
-        for task in self.taskset.tasks:
-            #track each task so that we can rollback if needed
-            self.tracker.push(task)
+        group_count = len(self.taskset.groups)
+        groups_finished = 0
+        for group in self.taskset.groups:
+            #track each group so that we can rollback if needed
+            self.tracker.push(group)
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
             try:
-                yield gen.Task(task.run)
-                tasks_finished += 1
-            except:
-                #todo: debug logging
-                task.result.state = TaskState.Error
-            finally:
-                # if all tasks are done OR a single task fails then we break
-                if task.result.state == TaskState.Done:
-                    if task_count == tasks_finished:
-                        self.success = True
-                        break
-                else:
-                    self.success = False
-                    break
+                yield gen.Task(self._execute_parallel, group.tasks)
+                groups_finished += 1
+                if group_count == groups_finished:
+                    self.success = True
+            except Exception, e:
+                # catch all and
+                self.success = False
+                #send event
+                #debg logging
+                break
 
         #send notification of the result
         self._cleanup()
 
-    def _execute_parallel(self):
-        for task in self.taskset:
-            self.tracker.push(task)
+    def _execute_parallel(self, tasks, callback):
+        pass
+
 
     def _cleanup(self):
         if self.success:
@@ -66,3 +67,4 @@ class WorkflowExecutor(object):
 
     def _notify(self):
         pass
+
