@@ -24,13 +24,14 @@ class WorkflowExecutor(object):
             #raise WorkflowRentrantException(self.model)
             pass
         self.executed_once = True
-        if self.taskset.parallel:
-            self._execute_parallel()
-        else:
-            self._execute_serial()
+        self._execute_serial()
 
     @gen.engine
     def _execute_serial(self):
+        """
+        Groups are always executed in a serial fashion.
+        Individual tasks within groups are executed in parallel
+        """
         group_count = len(self.taskset.groups)
         groups_finished = 0
         for group in self.taskset.groups:
@@ -53,10 +54,6 @@ class WorkflowExecutor(object):
 
         #send notification of the result
         self._cleanup()
-
-    def _execute_parallel(self, tasks, callback):
-        pass
-
 
     def _cleanup(self):
         if self.success:

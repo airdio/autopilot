@@ -1,6 +1,7 @@
 #! /usr/bin python
 from autopilot.workflows.tasks.taskresult import TaskResult, TaskState
 
+
 class Task(object):
     """Base class for Tasks
     """
@@ -24,10 +25,3 @@ class Task(object):
         self.result.update("Rolledback", TaskState.Error)
         callback(self)
 
-class TaskSet(object):
-    """
-    Set of tasks
-    """
-    def __init__(self, parallel, tasks=[]):
-        self.parallel = parallel
-        self.tasks = tasks

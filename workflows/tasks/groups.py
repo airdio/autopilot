@@ -1,30 +1,24 @@
 #! /usr/bin python
 from autopilot.workflows.tasks.taskresult import TaskResult, TaskState
+from autopilot.workflows.tasks.taskstack import Taskstack
 from autopilot.workflows.tasks.task import Task
 
 
 class Group(object):
-    """Base class for Tasks
+    """
+    Groups execute all tasks in parallel
     """
     def __init__(self, apenv, groupid, tasks):
         self.apenv = apenv
         self.groupid = groupid
         self.tasks = tasks
+        self.taskstack = Taskstack()
 
     #override in derived classes
     def run(self, callback):
-         for task in tasks:
+        for task in self.tasks:
+            self.taskstack.push(task)
             task.run(callback)
 
     def rollback(self, callback):
-        self.rolledback = True
-        self.result.update("Rolledback", TaskState.Error)
-        callback(self)
-
-class TaskSet(object):
-    """
-    Set of tasks
-    """
-    def __init__(self, parallel, tasks=[]):
-        self.parallel = parallel
-        self.tasks = tasks
+        self.taskstack.rewind()
