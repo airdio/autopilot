@@ -1,6 +1,5 @@
 #! /usr/bin python
-from autopilot.workflows.tasks.task import Task
-from autopilot.workflows.tasks.taskresult import TaskResult, TaskState
+from autopilot.workflows.tasks.task import Task, TaskResult, TaskState
 
 
 class DeployRole(Task):

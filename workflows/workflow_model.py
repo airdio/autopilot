@@ -1,15 +1,16 @@
 #! /usr/bin python
 import simplejson
 from autopilot.common.utils import Dct
-from autopilot.workflows.tasks.task import TaskSet
+from autopilot.workflows.tasks.group import TaskGroup
 from autopilot.workflows.tasks.taskfactory import TaskFactory
 from autopilot.cloud.cloudfactory import CloudFactory
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
 
 class WorkflowModel(object):
-    """ Define a workflow mode
     """
-    def __init__(self, apenv, wf_id, type, target, token, audit, cloud, taskset):
+    Object representation of a workflow
+    """
+    def __init__(self, apenv, wf_id, type, target, token, audit, cloud, taskgroups):
         self.apenv = apenv
         self.wf_id = wf_id
         self.type = type
@@ -17,28 +18,31 @@ class WorkflowModel(object):
         self.account = token
         self.audit = audit
         self.cloud = cloud
-        self.taskset = taskset
+        self.taskgroups = taskgroups
         self.parallel = True
 
-    def get_executor(self):
+    def prepare_executor(self):
         return WorkflowExecutor(self)
 
     @staticmethod
     def loads(apenv, model_str):
-        dct = simplejson.loads(model_str)
-        cloud = Dct.get(dct, "cloud")
-        wf_id = Dct.get(dct, "wf_id")
+        modeld = simplejson.loads(model_str)
+        cloud = WorkflowModel._resolve_cloud(Dct.get(modeld, "cloud"))
+        wf_id = Dct.get(modeld, "wf_id")
         return WorkflowModel(apenv,
                              wf_id,
-                             Dct.get(dct, "type"),
-                             Dct.get(dct, "target"),
-                             Dct.get(dct, "token"),
-                             Dct.get(dct, "audit"),
-                             WorkflowModel._get_cloud(cloud),
-                             WorkflowModel._get_tasks(wf_id, apenv, cloud, Dct.get(dct, "taskset")))
+                             Dct.get(modeld, "type"),
+                             Dct.get(modeld, "target"),
+                             Dct.get(modeld, "token"),
+                             Dct.get(modeld, "audit"),
+                             cloud,
+                             WorkflowModel._resolve_taskgroups(wf_id, apenv, cloud, Dct.get(modeld, "taskgroups")))
 
+    """
+    Resolves the cloud instance to use
+    """
     @staticmethod
-    def _get_cloud(cloud_dict):
+    def _resolve_cloud(cloud_dict):
         """
         resolve cloud instance
         """
@@ -48,15 +52,24 @@ class WorkflowModel(object):
         return CloudFactory.create(target, props)
 
     """
-    Resolves task instances
+    Resolves taskset
     """
     @staticmethod
-    def _get_tasks(wf_id, apenv, cloud, tasksetd):
-        taskset = TaskSet(Dct.get(tasksetd, "parallel"))
-        tasksd = Dct.get(tasksetd, "tasks", [])
+    def _resolve_taskgroups(wf_id, apenv, cloud, tasksetd):
+        groups = []
+        for groupd in tasksetd:
+            groups.append(WorkflowModel._resolve_group(wf_id, apenv, cloud, groupd))
+        return groups
+
+    @staticmethod
+    def _resolve_group(wf_id, apenv, cloud, groupd):
+        groupid = Dct.get(groupd, "groupid")
+        tasksd = Dct.get(groupd, "tasks")
+        tasks = []
         for taskd in tasksd:
-            taskset.tasks.append(TaskFactory.create(apenv, wf_id, cloud, Dct.get(taskd, "name"),
+            tasks.append(TaskFactory.create(apenv, wf_id, cloud, Dct.get(taskd, "name"),
                          Dct.get(taskd, "properties")))
-        return taskset
+        return TaskGroup(wf_id, apenv, groupid, tasks)
+
 
 

@@ -2,8 +2,7 @@
 
 from tornado import gen
 from autopilot.common.apenv import ApEnv
-from autopilot.workflows.tasks.taskstack import Taskstack
-from autopilot.workflows.tasks.taskresult import TaskResult, TaskState
+from autopilot.workflows.tasks.task import TaskResult, TaskState, TaskGroups
 
 
 class WorkflowExecutor(object):
@@ -13,10 +12,8 @@ class WorkflowExecutor(object):
     """
     def __init__(self, model):
         self.model = model
-        self.taskset = self.model.taskset
-        self.tracker = Taskstack()
-        self.success = False
-        self.exceptions = []
+        self.executedGroups = []
+        self.success = True
         self.executed_once = False
 
     def execute(self):
@@ -32,36 +29,41 @@ class WorkflowExecutor(object):
         Groups are always executed in a serial fashion.
         Individual tasks within groups are executed in parallel
         """
-        group_count = len(self.taskset.groups)
-        groups_finished = 0
-        for group in self.taskset.groups:
-            #track each group so that we can rollback if needed
-            self.tracker.push(group)
+        taskgroups = self.model.taskgroups
+        for group in taskgroups:
+            # track each group execution context so that we can rollback if needed
+            # execution of tasks within the group is parallel
+            ec = group.get_execution_context()
+            self.executedGroups.append(ec)
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
-            try:
-                yield gen.Task(self._execute_parallel, group.tasks)
-                groups_finished += 1
-                if group_count == groups_finished:
-                    self.success = True
-            except Exception, e:
-                # catch all and
+            yield gen.Task(ec.run)
+
+            if not self._check_group_success(group):
+                # if this group failed we will not execute the
                 self.success = False
-                #send event
-                #debg logging
                 break
 
-        #send notification of the result
-        self._cleanup()
+    @gen.engine
+    def rollback(self):
+        """
+        Calls rollback on the executed groups in the reverse order
+        """
+        for g in self.executedGroups[::-1]:
+            yield gen.Task(g.rewind)
 
-    def _cleanup(self):
-        if self.success:
-            # post status along with logs and exceptions
-            pass
-        else:
-            self.tracker.rewind()
+    def _all_tasks_succeeded(self):
+        for group in self.model.taskgroups:
+            if not self._check_group_success(group):
+                return False
+        return True
+
+    def _check_group_success(self, group):
+        for task in group.tasks:
+            if task.result.state == TaskState.Error:
+                return False
+        return True
 
     def _notify(self):
         pass
-

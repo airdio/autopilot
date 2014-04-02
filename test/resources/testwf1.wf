@@ -16,7 +16,7 @@
             "aws_access_key_id": "987654321BA",
             "aws_secret_access_key": "123456789AB"}},
     "execution_flags": ["atomic"],
-    "taskset": [{
+    "taskgroups": [{
         "groupid": "canary",
         "tasks": [{
             "name": "Touchfile",
@@ -40,12 +40,12 @@
     {
         "groupid": "full",
         "tasks": [{
-            "name": "Touchfile",
+            "name": "Touchfile3",
             "properties": {
                 "label": "deployment of a role touch",
                 "notification": true,
                 "version": "1.0",
-                "file_path": "/tmp/file1"
+                "file_path": "/tmp/file3"
             }
         }]
     }]

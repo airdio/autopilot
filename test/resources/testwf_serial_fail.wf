@@ -15,35 +15,38 @@
         "properties": {
             "aws_access_key_id": "987654321BA",
             "aws_secret_access_key": "123456789AB"}},
-    "taskset": {
-        "parallel": false,
+    "execution_flags": ["atomic"],
+    "taskgroups": [{
+        "groupid": "canary",
         "tasks": [{
             "name": "Touchfile",
             "properties": {
                 "label": "deployment of a role touch",
                 "notification": true,
                 "version": "1.0",
-                "instances": 1,
-                "file_path": "/tmp/file1",
-                "vcs": {
-                    "type": "git",
-                    "url": "https://www.github.com/aptest"
-                    }
-                }
-            },
-            {
+                "file_path": "/tmp/file1"
+            }
+        },
+        {
             "name": "TouchfileFail",
+            "properties": {
+                "label": "failed deployment of a role touch file2",
+                "notification": true,
+                "version": "2.0",
+                "file_path": "/tmp/file2"
+            }
+        }]
+    },
+    {
+        "groupid": "full",
+        "tasks": [{
+            "name": "Touchfile3",
             "properties": {
                 "label": "deployment of a role touch",
                 "notification": true,
                 "version": "1.0",
-                "instances": 1,
-                "file_path": "/tmp/file2",
-                "vcs": {
-                    "type": "git",
-                    "url": "https://www.github.com/aptest"
-                    }
-                }
-            }]
-     }
+                "file_path": "/tmp/file3"
+            }
+        }]
+    }]
 }

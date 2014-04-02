@@ -1,15 +1,28 @@
 --- dependencies for all components
 
-common:
-    - boto
-    - tornado
-    - iptools
-    - decorator
-    - iso8601
-    - pyyaml
-    - simplejson
-    - scp
-    - paramiko
+worker:
+    - boto==2.27
+    - tornado==3.2
+    - iptools==0.61
+    - decorator==3.4.0
+    - iso8601==0.1.10
+    - pyyaml==3.10
+    - simplejson==3.3.3
+    - pycrypto=2.6.1
+     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install pycrypto
+    - scp==0.71
+    - paramiko==1.13
+
 master:
 
-worker:
+auth:
+
+messaging:
+
+logging/monitoring:
+graphite
+flume
+
+monitoring:
+
+
