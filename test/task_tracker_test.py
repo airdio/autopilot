@@ -16,11 +16,11 @@ from autopilot.test.aptest import APtest
 class TaskstackTest(APtest):
     """ Tests test stack
     """
-    def test_tracker(self):
+    def test_stack(self):
         apenv = ApEnv()
-        task1 = TouchfileTask(apenv, "wf_1", None, {"file_path": "file1.log"})
+        task1 = TouchfileTask("task1", apenv, "wf_1", None, {"file_path": "file1.log"})
         task1.run(self._statusf)
-        task2 = TouchfileTask(apenv, "wf_1", None, {"file_path": "file2.log"})
+        task2 = TouchfileTask("task2", apenv, "wf_1", None, {"file_path": "file2.log"})
         task2.run(self._statusf)
         self.at(os.path.isfile(task1.file_name))
         self.at(os.path.isfile(task2.file_name))
