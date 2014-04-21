@@ -12,7 +12,7 @@ class TaskFactory(object):
     def create(apenv, wf_id, cloud, task_name, properties):
         wfInstance = apenv.get(wf_id)
         resolver = Dct.get(wfInstance, "resolver", TaskFactory)
-        k = getattr(resolver, "_create_{0}".format(task_name))
+        k = getattr(resolver, "create_{0}".format(task_name))
         return k(apenv, cloud, wf_id, properties)
 
     @staticmethod

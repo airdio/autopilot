@@ -1,4 +1,4 @@
-#! /usr/bin python
+#! /usr/bin/python
 from tornado import gen
 from autopilot.workflows.tasks.task import Task, TaskResult, TaskState
 
@@ -17,11 +17,12 @@ class TaskGroup(object):
         """
         Returns a fresh execution context
         """
-        return GroupExecutionContext(self.tasks)
+        return GroupExecutionContext(self.groupid, self.tasks)
 
 
 class GroupExecutionContext(object):
-    def __init__(self, tasks):
+    def __init__(self, groupid, tasks):
+        self.groupid = groupid
         self.tasks = tasks
         self.tasksdone = 0
         self.finalcallback = None

@@ -233,6 +233,11 @@ def get_utc_now(iso=False):
     else:
         return now
 
+def get_utc_now_seconds():
+    now = datetime.utcnow().replace(tzinfo=iso8601.iso8601.UTC)
+    epoch = datetime(1970, 1, 1).replace(tzinfo=iso8601.iso8601.UTC)
+    return (now - epoch).total_seconds()
+
 def datetime_tuple_to_iso(tup):
     """
     Converts a datetime tuple to a UTC iso time string

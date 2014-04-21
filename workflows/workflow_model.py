@@ -1,4 +1,4 @@
-#! /usr/bin python
+#! /usr/bin/python
 import simplejson
 from autopilot.common.utils import Dct
 from autopilot.workflows.tasks.group import TaskGroup
@@ -20,9 +20,10 @@ class WorkflowModel(object):
         self.cloud = cloud
         self.taskgroups = taskgroups
         self.parallel = True
+        self.executor = WorkflowExecutor(self)
 
-    def prepare_executor(self):
-        return WorkflowExecutor(self)
+    def get_executor(self):
+        return self.executor
 
     @staticmethod
     def loads(apenv, model_str):
@@ -38,9 +39,7 @@ class WorkflowModel(object):
                              cloud,
                              WorkflowModel._resolve_taskgroups(wf_id, apenv, cloud, Dct.get(modeld, "taskgroups")))
 
-    """
-    Resolves the cloud instance to use
-    """
+
     @staticmethod
     def _resolve_cloud(cloud_dict):
         """
@@ -51,9 +50,6 @@ class WorkflowModel(object):
         #todo: get aws access keys from the environment
         return CloudFactory.create(target, props)
 
-    """
-    Resolves taskset
-    """
     @staticmethod
     def _resolve_taskgroups(wf_id, apenv, cloud, tasksetd):
         groups = []

@@ -1,5 +1,9 @@
 #! /usr/bin python
 
+from autopilot.common import utils
+from autopilot.common.asyncpool import taskpool
+
+
 class TaskGroups(object):
     """
     Groups of tasks
@@ -27,10 +31,10 @@ class TaskResult(object):
         self.tracked_task = task
         self.workflow = wf_id
         self.state = state
-        self.notification_targets = []
         self.state_change_stack = [self.state]
         self.exceptions = []
         self.messages = []
+        self.result_data = {}
 
     def update(self, next_state, messages=[], exceptions=[]):
         self.messages.append(messages)
@@ -41,6 +45,7 @@ class TaskResult(object):
 
     def serialize(self):
         pass
+
 
 class Task(object):
     """
@@ -54,41 +59,83 @@ class Task(object):
         self.result = None
         self.workflow = wf_id
         self.result = TaskResult(self, self.workflow, TaskState.Initialized)
+        self.finalcallback = None  # we do not have a callback yet
+        self.starttime = None
+        self.endtime = None
 
-    #override in derived classes
+    # don't override this. Override process_run
     def run(self, callback):
-        self.result.update(TaskState.Started,
-                           ["Task {0} Started".format(self.name)])
-        (final_state, messages, exceptions) = self.process_run()
-        self.result.update(final_state, messages, exceptions)
-        self._finalize()
-        callback(self)
+        self.starttime = utils.get_utc_now_seconds()
+        if callback is None:
+            # todo exceptions
+            raise Exception("Argument callback required")
+        if self.result.state is not TaskState.Initialized:
+            # todo exceptions
+            raise Exception("Task {0} is not in Initialized state. State: {1}".format(self.name, self.result.state))
 
-    # override in derived class
+        # todo: assigning this callback is a hack.
+        # we should to create an execution context here
+        self.finalcallback = callback
+        self.result.update(TaskState.Started, ["Task {0} Started".format(self.name)])
+        self.on_run(self._on_run_callback)
+
+    # don't override this. Override process_rollback
     def rollback(self, callback):
         # If the task never executed then
         # do not do anything
         if self.result.state == TaskState.Initialized:
             callback(self)
 
-        self.process_rollback()
+        # todo: assigning this callback is a hack.
+        # we should to create an execution context here
+        self.finalcallback = callback
+        self.on_rollback(self._on_rollback_callback)
 
-        self.result.update(TaskState.Rolledback, ["Rolledback"])
+    # override in derived class
+    def on_run(self, callback):
+        callback(TaskState.Done, ["Task {0} done".format(self.name)], [])
+
+    # override in derived classes
+    def on_rollback(self, callback):
+        callback(TaskState.Rolledback, ["Task {0} rolledback".format(self.name)], [])
+
+    def _on_run_callback(self, final_state, messages=[], exceptions=[]):
+        self.result.update(final_state, messages, exceptions)
         self._finalize()
-        callback(self)
+        # call the original callback
+        self.finalcallback(self)
 
-    def process_run(self):
-        return TaskState.Done, ["Task {0} done".format(self.name)], []
-
-    def process_rollback(self):
-        pass
+    def _on_rollback_callback(self, final_state, messages=[], exceptions=[]):
+        self.result.update(TaskState.Rolledback, messages, exceptions)
+        self._finalize()
+        # call the original callback
+        self.finalcallback(self)
 
     # base class helper method to finalize this task
     def _finalize(self):
         """
-        notify the task state machine is done
-        send events
+        notify task status
+        send relevant events
         """
+        self.endtime = utils.get_utc_now_seconds()
         pass
 
 
+class AsyncTask(Task):
+    def __init__(self, apenv, name, wf_id, cloud, properties):
+        Task.__init__(self, apenv, name, wf_id, cloud, properties)
+
+    def on_run(self, callback):
+        result = taskpool.spawn(self.on_async_run)
+        callback(result)
+
+    # override in derived class
+    def on_async_run(self):
+        return TaskState.Done, ["Task {0} done".format(self.name)], []
+
+    def on_rollback(self, callback):
+        taskpool.spawn(self.on_async_rollback)
+
+    # override in derived rollback
+    def on_async_rollback(self):
+        return TaskState.Rolledback, ["Task {0} rolledback".format(self.name)], []

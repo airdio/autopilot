@@ -2,6 +2,9 @@
 
 import os
 import unittest
+import simplejson
+from autopilot.common.apenv import ApEnv
+from autopilot.workflows.workflow_model import WorkflowModel
 
 
 class APtest(unittest.TestCase):
@@ -15,6 +18,11 @@ class APtest(unittest.TestCase):
 
     def af(self, expr, msg=None):
         self.assertFalse(expr, msg)
+
+    def get_default_model(self, workflow_file, wf_id="wf_id1"):
+        apenv = ApEnv()
+        apenv.add(wf_id, {"resolver": self})
+        return WorkflowModel.loads(apenv, simplejson.dumps(simplejson.load(self.openf(workflow_file))))
 
     def openf(self, path):
         fp = os.path.join("resources", path)

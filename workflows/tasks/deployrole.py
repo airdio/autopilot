@@ -1,4 +1,4 @@
-#! /usr/bin python
+#! /usr/bin/python
 from autopilot.workflows.tasks.task import Task, TaskResult, TaskState
 
 

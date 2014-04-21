@@ -1,4 +1,4 @@
-#! /usr/bin python
+#! /usr/bin/python
 
 from tornado import gen
 from autopilot.common.apenv import ApEnv
@@ -18,13 +18,12 @@ class WorkflowExecutor(object):
 
     def execute(self):
         if self.executed_once:
-            #raise WorkflowRentrantException(self.model)
-            pass
+            raise Exception("Executing workflow twice")
         self.executed_once = True
-        self._execute_serial()
+        self._execute_groups()
 
     @gen.engine
-    def _execute_serial(self):
+    def _execute_groups(self):
         """
         Groups are always executed in a serial fashion.
         Individual tasks within groups are executed in parallel
