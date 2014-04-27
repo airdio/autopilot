@@ -9,8 +9,8 @@ class DeployRole(Task):
     """
     Name = "Deploy Role"
 
-    def __init__(self, cloud, props):
-        Task(DeployRole.Name, cloud, props)
+    def __init__(self, inf, props):
+        Task(DeployRole.Name, inf, props)
         self.result = TaskResult(self, TaskState.Initialized)
 
     def run(self, callback):

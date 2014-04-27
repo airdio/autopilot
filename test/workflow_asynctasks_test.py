@@ -59,11 +59,11 @@ class WorkflowAsyncTaskTests(APtest):
         self.ae(TaskState.Error, tasks[0].result.state)
         self.ae(1, len(tasks[0].result.exceptions))
 
-    def create_FetchUrl(self, apenv, cloud, wf_id, properties):
-        return FetchUrlTask("FetchUrlTask", apenv, wf_id, cloud, properties)
+    def create_FetchUrl(self, apenv, inf, wf_id, properties):
+        return FetchUrlTask("FetchUrlTask", apenv, wf_id, inf, properties)
 
-    def create_FetchUrl2(self, apenv, cloud, wf_id, properties):
-        return FetchUrlTask("FetchUrlTask2", apenv, wf_id, cloud, properties)
+    def create_FetchUrl2(self, apenv, inf, wf_id, properties):
+        return FetchUrlTask("FetchUrlTask2", apenv, wf_id, inf, properties)
 
-    def create_AsyncException(self, apenv, cloud, wf_id, properties):
-        return tasks.AsyncExceptionTask("AsyncException", apenv, cloud, wf_id, properties)
+    def create_AsyncException(self, apenv, inf, wf_id, properties):
+        return tasks.AsyncExceptionTask("AsyncException", apenv, inf, wf_id, properties)

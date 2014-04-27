@@ -3,21 +3,21 @@ import simplejson
 from autopilot.common.utils import Dct
 from autopilot.workflows.tasks.group import TaskGroup
 from autopilot.workflows.tasks.taskfactory import TaskFactory
-from autopilot.cloud.cloudfactory import CloudFactory
+from autopilot.inf.infactory import InFactory
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
 
 class WorkflowModel(object):
     """
     Object representation of a workflow
     """
-    def __init__(self, apenv, wf_id, type, target, token, audit, cloud, taskgroups):
+    def __init__(self, apenv, wf_id, type, target, token, audit, inf, taskgroups):
         self.apenv = apenv
         self.wf_id = wf_id
         self.type = type
         self.target = target
         self.account = token
         self.audit = audit
-        self.cloud = cloud
+        self.inf = inf
         self.taskgroups = taskgroups
         self.parallel = True
         self.executor = WorkflowExecutor(self)
@@ -28,7 +28,7 @@ class WorkflowModel(object):
     @staticmethod
     def loads(apenv, model_str):
         modeld = simplejson.loads(model_str)
-        cloud = WorkflowModel._resolve_cloud(Dct.get(modeld, "cloud"))
+        inf = WorkflowModel._resolve_inf(Dct.get(modeld, "inf"))
         wf_id = Dct.get(modeld, "wf_id")
         return WorkflowModel(apenv,
                              wf_id,
@@ -36,34 +36,34 @@ class WorkflowModel(object):
                              Dct.get(modeld, "target"),
                              Dct.get(modeld, "token"),
                              Dct.get(modeld, "audit"),
-                             cloud,
-                             WorkflowModel._resolve_taskgroups(wf_id, apenv, cloud, Dct.get(modeld, "taskgroups")))
+                             inf,
+                             WorkflowModel._resolve_taskgroups(wf_id, apenv, inf, Dct.get(modeld, "taskgroups")))
 
 
     @staticmethod
-    def _resolve_cloud(cloud_dict):
+    def _resolve_inf(inf_dict):
         """
-        resolve cloud instance
+        resolve infrastructure instance
         """
-        target = Dct.get(cloud_dict, "target")
-        props = Dct.get(cloud_dict, "properties")
+        target = Dct.get(inf_dict, "target")
+        props = Dct.get(inf_dict, "properties")
         #todo: get aws access keys from the environment
-        return CloudFactory.create(target, props)
+        return InFactory.create(target, props)
 
     @staticmethod
-    def _resolve_taskgroups(wf_id, apenv, cloud, tasksetd):
+    def _resolve_taskgroups(wf_id, apenv, inf, tasksetd):
         groups = []
         for groupd in tasksetd:
-            groups.append(WorkflowModel._resolve_group(wf_id, apenv, cloud, groupd))
+            groups.append(WorkflowModel._resolve_group(wf_id, apenv, inf, groupd))
         return groups
 
     @staticmethod
-    def _resolve_group(wf_id, apenv, cloud, groupd):
+    def _resolve_group(wf_id, apenv, inf, groupd):
         groupid = Dct.get(groupd, "groupid")
         tasksd = Dct.get(groupd, "tasks")
         tasks = []
         for taskd in tasksd:
-            tasks.append(TaskFactory.create(apenv, wf_id, cloud, Dct.get(taskd, "name"),
+            tasks.append(TaskFactory.create(apenv, wf_id, inf, Dct.get(taskd, "name"),
                          Dct.get(taskd, "properties")))
         return TaskGroup(wf_id, apenv, groupid, tasks)
 

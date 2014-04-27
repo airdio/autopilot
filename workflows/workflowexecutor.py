@@ -2,7 +2,7 @@
 
 from tornado import gen
 from autopilot.common.apenv import ApEnv
-from autopilot.workflows.tasks.task import TaskResult, TaskState, TaskGroups
+from autopilot.workflows.tasks.task import TaskState
 
 
 class WorkflowExecutor(object):

@@ -1,6 +1,7 @@
-__author__ = 'sujeet'
 
-class Cloud(object):
+
+
+class Inf(object):
     """Base class for cloud cloud
     """
 

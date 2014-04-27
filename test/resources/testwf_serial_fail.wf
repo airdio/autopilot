@@ -10,7 +10,7 @@
         "initiated_by": "sujeetv",
         "datetime": 123214334
     },
-    "cloud": {
+    "inf": {
         "target": "aws",
         "properties": {
             "aws_access_key_id": "987654321BA",

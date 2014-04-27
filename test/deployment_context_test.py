@@ -39,7 +39,7 @@ class DeploymentContextTest(APtest):
         self.ae("2.0", context.stack.roles["role3"].version)
 
         #provider
-        self.ae("<class 'autopilot.cloud.aws.awscloud.AWScloud'>", str(type(context.cloud)))
+        self.ae("<class 'autopilot.inf.aws.awsinf.AWSInf'>", str(type(context.cloud)))
         self.ae("987654321BA", context.cloud.aws_access_key_id)
         self.ae("123456789AB", context.cloud.aws_secret_access_key)
 

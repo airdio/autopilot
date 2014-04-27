@@ -1,5 +1,5 @@
- # Cloud yaml for deployment
- cloud:
+ # Infrastructure yaml for deployment
+ inf:
     name: aws
     properties:
         aws_access_key_id: "987654321BA"

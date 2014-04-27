@@ -3,7 +3,7 @@
 from autopilot.workflows.workflowtype import WorkflowType
 from autopilot.clientcontext.stack import Stack
 from autopilot.clientcontext.role import Role
-from autopilot.cloud.aws.awscloud import AWScloud
+from autopilot.inf.aws.awsinf import AWSInf
 from autopilot.vcs.vcs import Vcs
 
 
@@ -47,13 +47,14 @@ class DeploymentContext(object):
     @staticmethod
     def _resolve_cloud(configd):
         #for now return aws always
-        return AWScloud.resolve_cloud(configd)
+        propd = configd["inf"]["properties"]
+        return AWSInf(propd["aws_access_key_id"], propd["aws_secret_access_key"])
 
     @staticmethod
     def _get_default_cloud():
         # todo
         # for now no-op. need to implement correctly
-        return AWScloud("", "")
+        return AWSInf("", "")
 
 
 

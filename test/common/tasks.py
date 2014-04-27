@@ -11,8 +11,8 @@ from autopilot.common.asyncpool import taskpool
 
 class FetchUrlTask(AsyncTask):
 
-    def __init__(self, taskname, apenv, wf_id, cloud, properties):
-        Task.__init__(self, apenv, taskname, wf_id, cloud, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties):
+        Task.__init__(self, apenv, taskname, wf_id, inf, properties)
         self.url = Dct.get(properties, "fetch_url", "www.google.com")
 
     def on_async_run(self):
@@ -33,8 +33,8 @@ class FetchUrlTask(AsyncTask):
 
 class TouchfileTask(Task):
 
-    def __init__(self, taskname, apenv, wf_id, cloud, properties):
-        Task.__init__(self, apenv, taskname, wf_id, cloud, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties):
+        Task.__init__(self, apenv, taskname, wf_id, inf, properties)
         self.file_name = self.properties["file_path"]
 
     def on_run(self, callback):
@@ -52,16 +52,16 @@ class TouchfileTask(Task):
 
 class TouchfileFailTask(TouchfileTask):
 
-    def __init__(self, taskname, apenv, wf_id, cloud, properties):
-        TouchfileTask.__init__(self, taskname, apenv, wf_id, cloud, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties):
+        TouchfileTask.__init__(self, taskname, apenv, wf_id, inf, properties)
 
     def on_run(self, callback):
         callback(TaskState.Error, ["Task {0} error".format(self.name)], [])
 
 
 class AsyncExceptionTask(AsyncTask):
-    def __init__(self, taskname, apenv, wf_id, cloud, properties):
-        Task.__init__(self, apenv, taskname, wf_id, cloud, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties):
+        Task.__init__(self, apenv, taskname, wf_id, inf, properties)
 
     def on_async_run(self):
         return TaskState.Error, [], [Exception("Exception from AsyncExceptionTask")]

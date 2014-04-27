@@ -1,21 +1,16 @@
 #! /user/bin python
 
-from autopilot.cloud.cloud import Cloud
+from autopilot.inf.inf import Inf
 
 
-class AWScloud(Cloud):
+class AWSInf(Inf):
     """ AWS Cloud specific implementation
     """
 
     def __init__(self, aws_access_key_id, aws_secret_access_key, statusf=None):
-        Cloud.__init__(self, statusf)
+        Inf.__init__(self, statusf)
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
-
-    @staticmethod
-    def resolve_cloud(configd, statusf=None):
-        propd = configd["cloud"]["properties"]
-        return AWScloud(propd["aws_access_key_id"], propd["aws_secret_access_key"], statusf)
 
     def validate_environment(self):
         pass

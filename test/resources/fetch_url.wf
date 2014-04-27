@@ -10,7 +10,7 @@
         "initiated_by": "sujeetv",
         "datetime": 123214334
     },
-    "cloud": {
+    "inf": {
         "target": "aws",
         "properties": {
             "aws_access_key_id": "987654321BA",
@@ -24,7 +24,7 @@
                 "label": "fetch url",
                 "notification": true,
                 "version": "1.0",
-                "fetch_url": "http://www.google.com"
+                "fetch_url": "http://www.github.com"
             }
         },
         {
@@ -33,7 +33,7 @@
                 "label": "fetch url2",
                 "notification": true,
                 "version": "2.0",
-                "fetch_url": "http://www.google.com"
+                "fetch_url": "http://www.github.com"
             }
         }]
     },
@@ -45,7 +45,7 @@
                 "label": "fetch url in full",
                 "notification": true,
                 "version": "1.0",
-                "fetch_url": "http://www.google.com"
+                "fetch_url": "http://www.github.com"
             }
         }]
     }]

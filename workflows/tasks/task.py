@@ -53,10 +53,10 @@ class Task(object):
     """
     Base class for Tasks
     """
-    def __init__(self, apenv, name, wf_id, cloud, properties):
+    def __init__(self, apenv, name, wf_id, inf, properties):
         self.apenv = apenv
         self.name = name
-        self.cloud = cloud
+        self.inf = inf
         self.properties = properties
         self.result = None
         self.workflow = wf_id
@@ -111,7 +111,7 @@ class Task(object):
         self.finalcallback(self)
 
     def _on_rollback_callback(self, final_state, messages=[], exceptions=[]):
-        self.result.update(TaskState.Rolledback, messages, exceptions)
+        self.result.update(final_state, messages, exceptions)
         self._finalize()
         # call the original callback
         self.finalcallback(self)
@@ -127,8 +127,8 @@ class Task(object):
 
 
 class AsyncTask(Task):
-    def __init__(self, apenv, name, wf_id, cloud, properties):
-        Task.__init__(self, apenv, name, wf_id, cloud, properties)
+    def __init__(self, apenv, name, wf_id, inf, properties):
+        Task.__init__(self, apenv, name, wf_id, inf, properties)
         self.asyncfinalcb = None
 
     def on_run(self, callback):
