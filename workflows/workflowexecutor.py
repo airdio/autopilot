@@ -41,6 +41,9 @@ class WorkflowExecutor(object):
 
             if not self._check_group_success(group):
                 # if this group failed we will not execute the
+                # rest of the tasks and mark the execution as
+                # failed. The caller will handle the errors and
+                # rollback of needed
                 self.success = False
                 break
 
@@ -52,7 +55,7 @@ class WorkflowExecutor(object):
         for g in self.executedGroups[::-1]:
             yield gen.Task(g.rewind)
 
-    def _all_tasks_succeeded(self):
+    def all_tasks_succeeded(self):
         for group in self.model.taskgroups:
             if not self._check_group_success(group):
                 return False
@@ -60,7 +63,7 @@ class WorkflowExecutor(object):
 
     def _check_group_success(self, group):
         for task in group.tasks:
-            if task.result.state == TaskState.Error:
+            if task.result.state != TaskState.Done:
                 return False
         return True
 

@@ -24,7 +24,7 @@ class FetchUrlTask(AsyncTask):
             f.write(str(self.starttime))
             self.result.result_data["filename"] = f.name
 
-        taskpool.sleep(5)
+        taskpool.sleep(2)
         return TaskState.Done, [], []
 
     def on_async_rollback(self):
@@ -57,3 +57,11 @@ class TouchfileFailTask(TouchfileTask):
 
     def on_run(self, callback):
         callback(TaskState.Error, ["Task {0} error".format(self.name)], [])
+
+
+class AsyncExceptionTask(AsyncTask):
+    def __init__(self, taskname, apenv, wf_id, cloud, properties):
+        Task.__init__(self, apenv, taskname, wf_id, cloud, properties)
+
+    def on_async_run(self):
+        return TaskState.Error, [], [Exception("Exception from AsyncExceptionTask")]

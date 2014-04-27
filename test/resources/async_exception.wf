@@ -1,0 +1,30 @@
+{
+    "wf_id": "wf_id1",
+    "type": "deployment",
+    "target": "aptest",
+    "token": "sujeetv",
+    "environment": {
+        "type": "development"
+    },
+    "audit": {
+        "initiated_by": "sujeetv",
+        "datetime": 123214334
+    },
+    "cloud": {
+        "target": "aws",
+        "properties": {
+            "aws_access_key_id": "987654321BA",
+            "aws_secret_access_key": "123456789AB"}},
+    "execution_flags": ["atomic"],
+    "taskgroups": [{
+        "groupid": "canary",
+        "tasks": [{
+            "name": "AsyncException",
+            "properties": {
+                "label": "just throw an exception",
+                "notification": true,
+                "version": "1.0"
+            }
+        }]
+    }]
+}

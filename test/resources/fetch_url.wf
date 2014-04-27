@@ -21,7 +21,7 @@
         "tasks": [{
             "name": "FetchUrl",
             "properties": {
-                "label": "deployment of a role touch",
+                "label": "fetch url",
                 "notification": true,
                 "version": "1.0",
                 "fetch_url": "http://www.google.com"
@@ -30,9 +30,21 @@
         {
             "name": "FetchUrl2",
             "properties": {
-                "label": "deployment of a role touch file2",
+                "label": "fetch url2",
                 "notification": true,
                 "version": "2.0",
+                "fetch_url": "http://www.google.com"
+            }
+        }]
+    },
+    {
+      "groupid": "full",
+      "tasks": [{
+            "name": "FetchUrl",
+            "properties": {
+                "label": "fetch url in full",
+                "notification": true,
+                "version": "1.0",
                 "fetch_url": "http://www.google.com"
             }
         }]

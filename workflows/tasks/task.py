@@ -2,6 +2,7 @@
 
 from autopilot.common import utils
 from autopilot.common.asyncpool import taskpool
+# import datetime
 
 
 class TaskGroups(object):
@@ -10,6 +11,7 @@ class TaskGroups(object):
     """
     def __init__(self, groups=[]):
         self.groups = groups
+
 
 class TaskState(object):
     """
@@ -37,8 +39,8 @@ class TaskResult(object):
         self.result_data = {}
 
     def update(self, next_state, messages=[], exceptions=[]):
-        self.messages.append(messages)
-        self.exceptions.append(exceptions)
+        self.messages.extend(messages)
+        self.exceptions.extend(exceptions)
         if self.state != next_state:
             self.state = next_state
             self.state_change_stack.append(next_state)
@@ -65,6 +67,7 @@ class Task(object):
 
     # don't override this. Override process_run
     def run(self, callback):
+        # print "running {0} at {1}".format(self.name, datetime.datetime.utcnow() )
         self.starttime = utils.get_utc_now_seconds()
         if callback is None:
             # todo exceptions
@@ -93,11 +96,13 @@ class Task(object):
 
     # override in derived class
     def on_run(self, callback):
-        callback(TaskState.Done, ["Task {0} done".format(self.name)], [])
+        # todo make NotImplementedException
+        raise Exception("should not be called. Derived class should implement this")
 
     # override in derived classes
     def on_rollback(self, callback):
-        callback(TaskState.Rolledback, ["Task {0} rolledback".format(self.name)], [])
+        # todo make NotImplementedException
+        raise Exception("should not be called. Derived class should implement this")
 
     def _on_run_callback(self, final_state, messages=[], exceptions=[]):
         self.result.update(final_state, messages, exceptions)
@@ -124,18 +129,30 @@ class Task(object):
 class AsyncTask(Task):
     def __init__(self, apenv, name, wf_id, cloud, properties):
         Task.__init__(self, apenv, name, wf_id, cloud, properties)
+        self.asyncfinalcb = None
 
     def on_run(self, callback):
-        result = taskpool.spawn(self.on_async_run)
-        callback(result)
+        self.asyncfinalcb = callback
+        taskpool.spawn(self.on_async_run, callback=self._localasync_callback)
 
     # override in derived class
     def on_async_run(self):
-        return TaskState.Done, ["Task {0} done".format(self.name)], []
+        # todo make NotImplementedException
+        raise Exception("should not be called")
 
     def on_rollback(self, callback):
         taskpool.spawn(self.on_async_rollback)
 
     # override in derived rollback
     def on_async_rollback(self):
-        return TaskState.Rolledback, ["Task {0} rolledback".format(self.name)], []
+        # todo make NotImplementedException
+        raise Exception("should not be called")
+
+    def _localasync_callback(self, result, exception):
+        if exception is not None:
+            self.asyncfinalcb(TaskState.Error, [], [exception])
+        else:
+            # todo check if result is None
+            # fail if it is. Don'tjust assert
+            # since we can load external tasks
+            self.asyncfinalcb(result[0], result[1], result[2])
