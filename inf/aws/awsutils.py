@@ -38,8 +38,8 @@ from autopilot.common import exception
 from autopilot.common.utils import print_timing
 from autopilot.common.logger import log
 
-from autopilot.cloud.aws import static
-from autopilot.cloud.aws import awsimage
+from autopilot.inf.aws import static
+from autopilot.inf.aws import awsimage
 
 
 class EasyAWS(object):
@@ -69,7 +69,7 @@ class EasyAWS(object):
     @property
     def conn(self):
         if self._conn is None:
-            log.debug('creating self._conn w/ connection_authenticator ' +
+            log.debug("awsutils",'creating self._conn w/ connection_authenticator ' +
                       'kwargs = %s' % self._kwargs)
             validate_certs = self._kwargs.get('validate_certs', True)
             if validate_certs:
@@ -247,17 +247,29 @@ class EasyEC2(EasyAWS):
                     if i == max_retries - 1:
                         raise
                     if e.error_code == 'DependencyViolation':
-                        log.debug('DependencyViolation error - retrying in 5s',
+                        log.debug("awsutils",'DependencyViolation error - retrying in 5s',
                                   exc_info=True)
                         time.sleep(retry_delay)
                     elif e.error_code == 'InvalidPlacementGroup.InUse':
-                        log.debug('Placement group in use - retrying in 5s',
+                        log.debug("awsutils",'Placement group in use - retrying in 5s',
                                   exc_info=True)
                         time.sleep(retry_delay)
                     else:
                         raise
         finally:
             s.stop()
+
+    def create_vpc(self, name, description, cidr,
+                   subnet_cidr, security_group=[]):
+        """
+        Creates a VPC and a subnet inside it.
+        If security group is not specified then creates a default
+        with inbound rules
+        - [0.0.0.0/0  TCP port 22]
+        - [0.0.0.0/0  TCP port 80]
+        """
+        log.info("awsutils", "Creating VPC %s..." % name)
+        self.conn.cre
 
     def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False, vpc_id=None):
@@ -267,10 +279,10 @@ class EasyEC2(EasyAWS):
         will allow all traffic between instances in the same security
         group
         """
-        log.info("Creating security group %s..." % name)
+        log.info("awsutils", "Creating security group %s..." % name)
         sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
         while not self.get_group_or_none(name):
-            log.info("Waiting for security group %s..." % name)
+            log.info("awsutils", "Waiting for security group %s..." % name)
             time.sleep(3)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
@@ -397,17 +409,17 @@ class EasyEC2(EasyAWS):
         This will create the placement group within the region you
         are currently connected to.
         """
-        log.info("Creating placement group %s..." % name)
+        log.info("awsutils", "Creating placement group %s..." % name)
         success = self.conn.create_placement_group(name)
         if not success:
-            log.debug(
+            log.debug("awsutils",
                 "failed to create placement group '%s' (error = %s)" %
                 (name, success))
             raise exception.AWSError(
                 "failed to create placement group '%s'" % name)
         pg = self.get_placement_group_or_none(name)
         while not pg:
-            log.info("Waiting for placement group %s..." % name)
+            log.info("awsutils", "Waiting for placement group %s..." % name)
             time.sleep(3)
             pg = self.get_placement_group_or_none(name)
         return pg
@@ -472,12 +484,12 @@ class EasyEC2(EasyAWS):
             for dev in img.block_device_mapping:
                 bdt = img.block_device_mapping.get(dev)
                 if not bdt.ephemeral_name and dev in bdmap:
-                    log.debug("EBS volume already mapped to %s by AMI" % dev)
-                    log.debug("Removing %s from runtime block device map" %
+                    log.debug("awsutils","EBS volume already mapped to %s by AMI" % dev)
+                    log.debug("awsutils","Removing %s from runtime block device map" %
                               dev)
                     bdmap.pop(dev)
             if img.root_device_name in img.block_device_mapping:
-                log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
+                log.debug("awsutils","Forcing delete_on_termination for AMI: %s" % img.id)
                 root = img.block_device_mapping[img.root_device_name]
                 # specifying the AMI's snapshot in the custom block device
                 # mapping when you dont own the AMI causes an error on launch
@@ -537,7 +549,7 @@ class EasyEC2(EasyAWS):
             reqs_ids = [req.id for req in reqs]
             num_reqs = len(reqs)
             if num_reqs != num_objs:
-                log.debug("%d: only %d/%d %s have "
+                log.debug("awsutils","%d: only %d/%d %s have "
                           "propagated - sleeping..." %
                           (i, num_reqs, num_objs, obj_name))
                 if i != max_retries:
@@ -573,7 +585,7 @@ class EasyEC2(EasyAWS):
                 'instances', max_retries=max_retries, interval=interval)
 
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
-                      max_count=1, key_name=None, security_groups=None,
+                      max_count=1, key_name=None, security_groups=None, security_group_ids=None,
                       placement=None, user_data=None, placement_group=None,
                       block_device_map=None, subnet_id=None):
         kwargs = dict(
@@ -588,9 +600,10 @@ class EasyEC2(EasyAWS):
             block_device_map=block_device_map
         )
         if subnet_id:
-            kwargs.update(
-                security_group_ids=self.get_securityids_from_names(
-                    security_groups))
+            # kwargs.update(
+            #     security_group_ids=self.get_securityids_from_names(
+            #         security_groups))
+            kwargs.update(security_group_ids=security_group_ids)
             return self.conn.run_instances(image_id, **kwargs)
         else:
             kwargs.update(security_groups=security_groups)
@@ -751,7 +764,7 @@ class EasyEC2(EasyAWS):
     def list_all_spot_instances(self, show_closed=False):
         s = self.conn.get_all_spot_instance_requests()
         if not s:
-            log.info("No spot instance requests found...")
+            log.info("awsutils", "No spot instance requests found...")
             return
         spots = []
         for spot in s:
@@ -785,7 +798,7 @@ class EasyEC2(EasyAWS):
             print "security_groups: %s" % groups
             print
         if not spots:
-            log.info("No spot instance requests found...")
+            log.info("awsutils", "No spot instance requests found...")
         else:
             print 'Total: %s' % len(spots)
 
@@ -836,7 +849,7 @@ class EasyEC2(EasyAWS):
         if not show_terminated:
             insts = [i for i in insts if i.state not in tstates]
         if not insts:
-            log.info("No instances found")
+            log.info("awsutils", "No instances found")
             return
         for instance in insts:
             self.show_instance(instance)
@@ -859,12 +872,12 @@ class EasyEC2(EasyAWS):
 
     def list_registered_images(self):
         images = self.registered_images
-        log.info("Your registered images:")
+        log.info("awsutils", "Your registered images:")
         self.list_images(images)
 
     def list_executable_images(self):
         images = self.executable_images
-        log.info("Private images owned by other users that you can execute:")
+        log.info("awsutils", "Private images owned by other users that you can execute:")
         self.list_images(images)
 
     def __list_images(self, msg, imgs):
@@ -882,15 +895,15 @@ class EasyEC2(EasyAWS):
 
     def remove_image_files(self, image_name, pretend=True):
         if pretend:
-            log.info("Pretending to remove image files...")
+            log.info("awsutils", "Pretending to remove image files...")
         else:
-            log.info('Removing image files...')
+            log.info("awsutils", 'Removing image files...')
         files = self.get_image_files(image_name)
         for f in files:
             if pretend:
-                log.info("Would remove file: %s" % f.name)
+                log.info("awsutils", "Would remove file: %s" % f.name)
             else:
-                log.info('Removing file %s' % f.name)
+                log.info("awsutils", 'Removing file %s' % f.name)
                 f.delete()
         if not pretend:
             files = self.get_image_files(image_name)
@@ -902,9 +915,9 @@ class EasyEC2(EasyAWS):
     def remove_image(self, image_name, pretend=True, keep_image_data=True):
         img = self.get_image(image_name)
         if pretend:
-            log.info('Pretending to deregister AMI: %s' % img.id)
+            log.info("awsutils", 'Pretending to deregister AMI: %s' % img.id)
         else:
-            log.info('Deregistering AMI: %s' % img.id)
+            log.info("awsutils", 'Deregistering AMI: %s' % img.id)
             img.deregister()
         if img.root_device_type == "instance-store" and not keep_image_data:
             self.remove_image_files(img, pretend=pretend)
@@ -915,14 +928,14 @@ class EasyEC2(EasyAWS):
                 if snapid:
                     snap = self.get_snapshot(snapid)
                     if pretend:
-                        log.info("Would remove snapshot: %s" % snapid)
+                        log.info("awsutils", "Would remove snapshot: %s" % snapid)
                     else:
-                        log.info("Removing snapshot: %s" % snapid)
+                        log.info("awsutils", "Removing snapshot: %s" % snapid)
                         snap.delete()
 
     def list_starcluster_public_images(self):
         images = self.conn.get_all_images(owners=[static.STARCLUSTER_OWNER_ID])
-        log.info("Listing all public StarCluster images...")
+        log.info("awsutils", "Listing all public StarCluster images...")
         imgs = [img for img in images if img.is_public]
 
         def sc_public_sort(obj):
@@ -939,7 +952,7 @@ class EasyEC2(EasyAWS):
         msg = "Creating %sGB volume in zone %s" % (size, zone)
         if snapshot_id:
             msg += " from snapshot %s" % snapshot_id
-        log.info(msg)
+        log.info("awsutils", msg)
         return self.conn.create_volume(size, zone, snapshot_id)
 
     def remove_volume(self, volume_id):
@@ -949,7 +962,7 @@ class EasyEC2(EasyAWS):
     def list_keypairs(self):
         keypairs = self.keypairs
         if not keypairs:
-            log.info("No keypairs found...")
+            log.info("awsutils", "No keypairs found...")
             return
         max_length = max([len(key.name) for key in keypairs])
         templ = "%" + str(max_length) + "s  %s"
@@ -1118,9 +1131,9 @@ class EasyEC2(EasyAWS):
                 "This method only works for instance-store images")
         files = self.get_image_files(image)
         if not files:
-            log.info("No files found for image: %s" % image_id)
+            log.info("awsutils", "No files found for image: %s" % image_id)
             return
-        log.info("Migrating image: %s" % image_id)
+        log.info("awsutils", "Migrating image: %s" % image_id)
         widgets = [files[0].name, progressbar.Percentage(), ' ',
                    progressbar.Bar(marker=progressbar.RotatingMarker()), ' ',
                    progressbar.ETA(), ' ', ' ']
@@ -1150,7 +1163,7 @@ class EasyEC2(EasyAWS):
             if region:
                 cmd += '--region %s' % region
                 register_cmd += " --region %s" % region
-            log.info("Migrating manifest file...")
+            log.info("awsutils", "Migrating manifest file...")
             retval = os.system(cmd)
             if retval != 0:
                 raise exception.BaseException(
@@ -1161,7 +1174,7 @@ class EasyEC2(EasyAWS):
             manifest_key.add_email_grant('READ', 'za-team@amazon.com')
             f.close()
             os.unlink(f.name + '.bak')
-            log.info("Manifest migrated successfully. You can now run:\n" +
+            log.info("awsutils", "Manifest migrated successfully. You can now run:\n" +
                      register_cmd + "\nto register your migrated image.")
 
     def create_block_device_map(self, root_snapshot_id=None,
@@ -1212,7 +1225,7 @@ class EasyEC2(EasyAWS):
 
         def _dl_progress_cb(trans, total):
             pbar.update(trans)
-        log.info("Downloading image: %s" % image_id)
+        log.info("awsutils", "Downloading image: %s" % image_id)
         for file in files:
             widgets[0] = "%s:" % file.name
             pbar = progressbar.ProgressBar(widgets=widgets,
@@ -1295,7 +1308,7 @@ class EasyEC2(EasyAWS):
 
     def wait_for_snapshot(self, snapshot, refresh_interval=30):
         snap = snapshot
-        log.info("Waiting for snapshot to complete: %s" % snap.id)
+        log.info("awsutils", "Waiting for snapshot to complete: %s" % snap.id)
         widgets = ['%s: ' % snap.id, '',
                    progressbar.Bar(marker=progressbar.RotatingMarker()),
                    '', progressbar.Percentage(), ' ', progressbar.ETA()]
@@ -1315,7 +1328,7 @@ class EasyEC2(EasyAWS):
 
     def create_snapshot(self, vol, description=None, wait_for_snapshot=False,
                         refresh_interval=30):
-        log.info("Creating snapshot of volume: %s" % vol.id)
+        log.info("awsutils", "Creating snapshot of volume: %s" % vol.id)
         snap = vol.create_snapshot(description)
         if wait_for_snapshot:
             self.wait_for_snapshot(snap, refresh_interval)
@@ -1432,7 +1445,7 @@ class EasyEC2(EasyAWS):
         else:
             pdesc = "Linux/UNIX (Amazon VPC)"
             short_pdesc = "VPC"
-        log.info("Fetching spot history for %s (%s)" %
+        log.info("awsutils", "Fetching spot history for %s (%s)" %
                  (instance_type, short_pdesc))
         hist = self.conn.get_spot_price_history(start_time=start, end_time=end,
                                                 availability_zone=zone,
@@ -1451,9 +1464,9 @@ class EasyEC2(EasyAWS):
             data.append([timestamp, price])
         maximum = max(prices)
         avg = sum(prices) / float(len(prices))
-        log.info("Current price: $%.4f" % prices[0])
-        log.info("Max price: $%.4f" % maximum)
-        log.info("Average price: $%.4f" % avg)
+        log.info("awsutils", "Current price: $%.4f" % prices[0])
+        log.info("awsutils", "Max price: $%.4f" % maximum)
+        log.info("awsutils", "Average price: $%.4f" % avg)
         if plot:
             xaxisrange = dates[-1] - dates[0]
             xpanrange = [dates[0] - xaxisrange / 2.,
@@ -1469,20 +1482,20 @@ class EasyEC2(EasyAWS):
                            shutdown=plot_shutdown_server,
                            xpanrange=xpanrange, ypanrange=ypanrange,
                            xzoomrange=xzoomrange, yzoomrange=yzoomrange)
-            log.info("", extra=dict(__raw__=True))
-            log.info("Starting StarCluster Webserver...")
+            log.info("awsutils", "", extra=dict(__raw__=True))
+            log.info("awsutils", "Starting StarCluster Webserver...")
             s = webtools.get_template_server('web', context=context,
                                              interface=plot_server_interface)
             base_url = "http://%s:%s" % s.server_address
             shutdown_url = '/'.join([base_url, 'shutdown'])
             spot_url = "http://%s:%s/spothistory.html" % s.server_address
-            log.info("Server address is %s" % base_url)
-            log.info("(use CTRL-C or navigate to %s to shutdown server)" %
+            log.info("awsutils", "Server address is %s" % base_url)
+            log.info("awsutils", "(use CTRL-C or navigate to %s to shutdown server)" %
                      shutdown_url)
             if plot_launch_browser:
                 webtools.open_browser(spot_url, plot_web_browser)
             else:
-                log.info("Browse to %s to view the spot history plot" %
+                log.info("awsutils", "Browse to %s to view the spot history plot" %
                          spot_url)
             s.serve_forever()
         return data
@@ -1495,8 +1508,35 @@ class EasyEC2(EasyAWS):
         if console_output:
             print console_output
         else:
-            log.info("No console output available...")
+            log.info("awsutils", "No console output available...")
 
+
+class EasyVPC(EasyAWS):
+    DefaultHost = 's3.amazonaws.com'
+    _calling_format = boto.s3.connection.OrdinaryCallingFormat()
+
+    def __init__(self, aws_access_key_id, aws_secret_access_key,
+                 aws_port=None, aws_is_secure=True, aws_vpc_host=DefaultHost,
+                 aws_proxy=None, aws_proxy_port=None,
+                 aws_proxy_user=None, aws_proxy_pass=None,
+                 aws_validate_certs=True, **kwargs):
+
+        kwargs = dict(is_secure=aws_is_secure, host=aws_vpc_host or
+                      self.DefaultHost, port=aws_port,
+                      proxy=aws_proxy, proxy_port=aws_proxy_port,
+                      proxy_user=aws_proxy_user, proxy_pass=aws_proxy_pass,
+                      validate_certs=aws_validate_certs)
+        super(EasyVPC, self).__init__(aws_access_key_id, aws_secret_access_key,
+                                      boto.connect_vpc, **kwargs)
+
+    def create_vpc(self, cidr_block="10.0.0.0/16"):
+        return self.conn.create_vpc(cidr_block=cidr_block)
+
+    def create_subnet(self, vpc_id, subnet_cidr_block="10.0.0.0/24"):
+        """
+        Create a new subnet within vpc_id
+        """
+        return self.create_subnet(vpc_id=vpc_id, cidr_block=subnet_cidr_block)
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'
@@ -1546,7 +1586,7 @@ class EasyS3(EasyAWS):
         try:
             return self.get_bucket(bucket_name)
         except exception.BucketDoesNotExist:
-            log.info("Creating bucket '%s'" % bucket_name)
+            log.info("awsutils", "Creating bucket '%s'" % bucket_name)
             return self.create_bucket(bucket_name)
 
     def get_bucket_or_none(self, bucket_name):

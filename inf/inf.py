@@ -1,5 +1,13 @@
 
 
+class InfRequestContext(object):
+        def __init__(self, original_spec, callback=None):
+            self.original_spec = original_spec
+            self.callback = callback
+
+        def close(self, new_spec, errors=None):
+            pass
+
 
 class Inf(object):
     """Base class for cloud cloud
@@ -8,18 +16,11 @@ class Inf(object):
     def __init__(self, statusf=None):
         self.statusf = statusf
 
-    def validate_environment(self):
+    def initialize_environment(self, spec={}, callback=None):
         pass
 
-    def get_instance(self, instance_context, callback):
-        pass
-
-    def create_instance(self, instance_context, callback):
-        """ This should return a provision handle
+    def provision(self, spec={}, tags=[], callback=None):
         """
-        pass
-
-    def register_instance_status(self, instance_context, callback):
-        """Return provision status
+        This should return a InfProvisionContext
         """
         pass

@@ -7,7 +7,7 @@ from autopilot.common import utils
 from autopilot.common.utils import print_timing
 from autopilot.common.logger import log
 
-from autopilot.cloud.aws import awsexception
+from autopilot.inf.aws import awsexception
 
 class ImageCreator(object):
     """
