@@ -1,8 +1,8 @@
 
 
 class InfRequestContext(object):
-        def __init__(self, original_spec, callback=None):
-            self.original_spec = original_spec
+        def __init__(self, spec, callback=None):
+            self.spec = spec
             self.callback = callback
 
         def close(self, new_spec, errors=None):
@@ -10,17 +10,26 @@ class InfRequestContext(object):
 
 
 class Inf(object):
-    """Base class for cloud cloud
+    """
+    Interface for Inf functions
+    All functions should return InfRequestContext. This is like a future since
+    most of these operations will be asynchronous
     """
 
-    def __init__(self, statusf=None):
-        self.statusf = statusf
-
-    def initialize_environment(self, spec={}, callback=None):
+    def new_env(self, env_spec={}, callback=None):
+        """
+        Create a new service environment. An environment is an isolated topology like dev or staging or production
+        An environment is a within a domain
+        """
         pass
 
-    def provision(self, spec={}, tags=[], callback=None):
+    def clean_env(self, env_spec={}, callback=None):
         """
-        This should return a InfProvisionContext
+        Clean up the environemnt
+        """
+
+    def new_instance(self, instance_spec={}, tags=[], callback=None):
+        """
+        Provision a new instance
         """
         pass

@@ -2,15 +2,6 @@
 
 from autopilot.common import utils
 from autopilot.common.asyncpool import taskpool
-# import datetime
-
-
-class TaskGroups(object):
-    """
-    Groups of tasks
-    """
-    def __init__(self, groups=[]):
-        self.groups = groups
 
 
 class TaskState(object):

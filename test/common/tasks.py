@@ -31,6 +31,7 @@ class FetchUrlTask(AsyncTask):
         raise Exception("should not be called")
 
 
+
 class TouchfileTask(Task):
 
     def __init__(self, taskname, apenv, wf_id, inf, properties):
@@ -49,6 +50,7 @@ class TouchfileTask(Task):
         if os.path.isfile(self.file_name):
             os.remove(self.file_name)
         callback(TaskState.Rolledback, ["Task {0} rolledback".format(self.name)], [])
+
 
 class TouchfileFailTask(TouchfileTask):
 

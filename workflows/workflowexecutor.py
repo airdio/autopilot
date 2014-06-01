@@ -28,8 +28,8 @@ class WorkflowExecutor(object):
         Groups are always executed in a serial fashion.
         Individual tasks within groups are executed in parallel
         """
-        taskgroups = self.model.taskgroups
-        for group in taskgroups:
+        groupset = self.model.groupset
+        for group in groupset.groups:
             # track each group execution context so that we can rollback if needed
             # execution of tasks within the group is parallel
             ec = group.get_execution_context()

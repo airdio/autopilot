@@ -1,16 +1,17 @@
 #! /usr/bin/python
 import simplejson
 from autopilot.common.utils import Dct
-from autopilot.workflows.tasks.group import TaskGroup
+from autopilot.workflows.tasks.group import Group, GroupSet
 from autopilot.workflows.tasks.taskfactory import TaskFactory
 from autopilot.inf.infactory import InFactory
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
+
 
 class WorkflowModel(object):
     """
     Object representation of a workflow
     """
-    def __init__(self, apenv, wf_id, type, target, token, audit, inf, taskgroups):
+    def __init__(self, apenv, wf_id, type, target, token, audit, inf, groupset):
         self.apenv = apenv
         self.wf_id = wf_id
         self.type = type
@@ -18,7 +19,7 @@ class WorkflowModel(object):
         self.account = token
         self.audit = audit
         self.inf = inf
-        self.taskgroups = taskgroups
+        self.groupset = groupset
         self.parallel = True
         self.executor = WorkflowExecutor(self)
 
@@ -37,7 +38,7 @@ class WorkflowModel(object):
                              Dct.get(modeld, "token"),
                              Dct.get(modeld, "audit"),
                              inf,
-                             WorkflowModel._resolve_taskgroups(wf_id, apenv, inf, Dct.get(modeld, "taskgroups")))
+                             WorkflowModel._resolve_groupset(wf_id, apenv, inf, Dct.get(modeld, "taskgroups")))
 
 
     @staticmethod
@@ -51,11 +52,11 @@ class WorkflowModel(object):
         return InFactory.create(target, props)
 
     @staticmethod
-    def _resolve_taskgroups(wf_id, apenv, inf, tasksetd):
+    def _resolve_grouupset(wf_id, apenv, inf, tasksetd):
         groups = []
         for groupd in tasksetd:
             groups.append(WorkflowModel._resolve_group(wf_id, apenv, inf, groupd))
-        return groups
+        return GroupSet(groups)
 
     @staticmethod
     def _resolve_group(wf_id, apenv, inf, groupd):
@@ -65,7 +66,7 @@ class WorkflowModel(object):
         for taskd in tasksd:
             tasks.append(TaskFactory.create(apenv, wf_id, inf, Dct.get(taskd, "name"),
                          Dct.get(taskd, "properties")))
-        return TaskGroup(wf_id, apenv, groupid, tasks)
+        return Group(wf_id, apenv, groupid, tasks)
 
 
 

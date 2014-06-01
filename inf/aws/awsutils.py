@@ -272,7 +272,7 @@ class EasyEC2(EasyAWS):
         self.conn.cre
 
     def create_group(self, name, description, auth_ssh=False,
-                     auth_group_traffic=False, vpc_id=None):
+                     auth_group_traffic=False, vpc_id=None, auth_spec={}):
         """
         Create security group with name/description. auth_ssh=True
         will open port 22 to world (0.0.0.0/0). auth_group_traffic
@@ -291,7 +291,20 @@ class EasyEC2(EasyAWS):
                                                from_port=ssh_port,
                                                to_port=ssh_port,
                                                cidr_ip=static.WORLD_CIDRIP)
+
+        # check if we have more protocols to authorize
+        # "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80}, {"protocol": "tcp", "from": 50070, "to": 50070}]
+        for auth_map in auth_spec:
+            protocol = auth_map["protocol"]
+            self.conn.authorize_security_group(
+                group_id=sg.id,
+                ip_protocol=protocol,
+                from_port=auth_map["from"],
+                to_port=auth_map["to"],
+                cidr_ip=static.WORLD_CIDRIP)
+
         if auth_group_traffic:
+            # set defaults first
             self.conn.authorize_security_group(
                 group_id=sg.id,
                 src_security_group_group_id=sg.id,
@@ -1529,14 +1542,37 @@ class EasyVPC(EasyAWS):
         super(EasyVPC, self).__init__(aws_access_key_id, aws_secret_access_key,
                                       boto.connect_vpc, **kwargs)
 
-    def create_vpc(self, cidr_block="10.0.0.0/16"):
+    def create_vpc(self, cidr_block):
         return self.conn.create_vpc(cidr_block=cidr_block)
 
-    def create_subnet(self, vpc_id, subnet_cidr_block="10.0.0.0/24"):
+    def delete_vpc(self, vpc_id):
         """
-        Create a new subnet within vpc_id
+        Force delete the vpc
         """
-        return self.create_subnet(vpc_id=vpc_id, cidr_block=subnet_cidr_block)
+        return self.conn.delete_vpc(vpc_id=vpc_id)
+
+    def create_subnet(self, vpc_id, cidr_block):
+        """
+        Create a new subnet within a vpc
+        """
+        return self.conn.create_subnet(vpc_id=vpc_id, cidr_block=cidr_block)
+
+    def create_and_associate_internet_gateway(self, vpc_id, subnet_id):
+        """
+         -Create a new subnet within a vpc
+         -Create a custom route table, routes to the internet gateway and attach it to the subnet
+         -This is so that ip's inside the VPC can route traffic to destinations outside the VPC
+        """
+        # create an internet gateway and attach to the vpc
+        igw = self.conn.create_internet_gateway()
+        self.conn.attach_internet_gateway(internet_gateway_id=igw.id, vpc_id=vpc_id)
+
+        # route table
+        rt = self.conn.create_route_table(vpc_id=vpc_id)
+        self.conn.create_route(route_table_id=rt.id, destination_cidr_block="0.0.0.0/0", gateway_id=igw.id)
+        self.conn.associate_route_table(route_table_id=rt.id, subnet_id=subnet_id)
+        return igw
+
 
 class EasyS3(EasyAWS):
     DefaultHost = 's3.amazonaws.com'

@@ -9,7 +9,8 @@ from autopilot.common.apenv import ApEnv
 from autopilot.test.aptest import APtest
 from autopilot.test.common.tasks import TouchfileTask, TouchfileFailTask
 from autopilot.workflows.workflow_model import WorkflowModel
-from autopilot.workflows.tasks.task import TaskResult, TaskState, TaskGroups
+from autopilot.workflows.tasks.group import Group, GroupSet
+from autopilot.workflows.tasks.task import TaskResult, TaskState
 
 
 class WorkflowTests(APtest):
@@ -35,7 +36,7 @@ class WorkflowTests(APtest):
         try:
             ex.execute()
             self.ae(True, ex.success)
-            for group in model.taskgroups:
+            for group in model.groupset.groups:
                 for task in group.tasks:
                     self.ae(TaskState.Done, task.result.state, "task should be in Done state")
                     fp = task.properties["file_path"]
@@ -52,7 +53,7 @@ class WorkflowTests(APtest):
             self.ae(False, ex.success)
             self.ae(1, len(ex.executedGroups))
             ex.rollback()
-            for group in model.taskgroups:
+            for group in model.groupset.groups:
                 if group.groupid == "canary":
                     for task in group.tasks:
                         self.ae(TaskState.Rolledback, task.result.state, "task should be rolledback")
@@ -80,7 +81,7 @@ class WorkflowTests(APtest):
         return TouchfileFailTask("TouchfileFail", apenv, wf_id, cloud, properties)
 
     def _remove_files_if_exists(self, model):
-        for taskgroup in model.taskgroups:
+        for taskgroup in model.groupset.groups:
             for task in taskgroup.tasks:
                 fp = task.properties["file_path"]
                 if os.path.isfile(fp):

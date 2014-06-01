@@ -3,7 +3,7 @@ from tornado import gen
 from autopilot.workflows.tasks.task import Task, TaskResult, TaskState
 
 
-class TaskGroup(object):
+class Group(object):
     """
     Groups execute all tasks in parallel
     """
@@ -18,6 +18,14 @@ class TaskGroup(object):
         Returns a fresh execution context
         """
         return GroupExecutionContext(self.groupid, self.tasks)
+
+
+class GroupSet(object):
+    """
+    Groups
+    """
+    def __init__(self, groups=[]):
+        self.groups = groups
 
 
 class GroupExecutionContext(object):

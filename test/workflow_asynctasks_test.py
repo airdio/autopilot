@@ -13,7 +13,8 @@ from autopilot.test.common.tasks import FetchUrlTask
 from autopilot.common.apenv import ApEnv
 from autopilot.test.aptest import APtest
 from autopilot.workflows.workflow_model import WorkflowModel
-from autopilot.workflows.tasks.task import TaskResult, TaskState, TaskGroups
+from autopilot.workflows.tasks.group import Group, GroupSet
+from autopilot.workflows.tasks.task import TaskResult, TaskState
 
 
 class WorkflowAsyncTaskTests(APtest):
@@ -32,7 +33,7 @@ class WorkflowAsyncTaskTests(APtest):
         self.at(ex.success, "Execution should not fail")
 
         #get response from the tasks
-        tasks = model.taskgroups[0].tasks
+        tasks = model.groupset.groups[0].tasks
         filename1 = tasks[0].result.result_data["filename"]
         filename2 = tasks[0].result.result_data["filename"]
 
@@ -41,7 +42,7 @@ class WorkflowAsyncTaskTests(APtest):
         data2 = float(Utils.read_file(filename2)[0])
         self.at((data2 - data1) < 2, "time difference should be less than 2")
 
-        fulltasks = model.taskgroups[1].tasks
+        fulltasks = model.groupset.groups[1].tasks
         filename3 = fulltasks[0].result.result_data["filename"]
         data3 = float(Utils.read_file(filename3)[0])
         self.at((data3 - data1) >= 2, "time difference should be greater than or equal to 2")
@@ -55,7 +56,7 @@ class WorkflowAsyncTaskTests(APtest):
 
         self.af(ex.success, "Execution should fail")
 
-        tasks = model.taskgroups[0].tasks
+        tasks = model.groupset.groups[0].tasks
         self.ae(TaskState.Error, tasks[0].result.state)
         self.ae(1, len(tasks[0].result.exceptions))
 

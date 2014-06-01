@@ -5,6 +5,7 @@ import unittest
 import simplejson
 from autopilot.common.apenv import ApEnv
 from autopilot.workflows.workflow_model import WorkflowModel
+from autopilot.inf.aws.awsinf import AWSInf
 
 
 class APtest(unittest.TestCase):
@@ -27,3 +28,13 @@ class APtest(unittest.TestCase):
     def openf(self, path):
         fp = os.path.join("resources", path)
         return open(fp)
+
+
+class AWStest(APtest):
+
+    def get_aws_inf(self):
+        return AWSInf(aws_access_key=os.environ["AWS_ACCESS_KEY"],
+                      aws_secret_key=os.environ["AWS_SECRET_KEY"])
+
+
+
