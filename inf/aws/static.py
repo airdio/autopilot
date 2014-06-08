@@ -125,19 +125,94 @@ INSTANCE_TYPES = {
     'cc1.4xlarge': ['x86_64'],
     'cc2.8xlarge': ['x86_64'],
     'cg1.4xlarge': ['x86_64'],
-    'g2.2xlarge': ['x86_64'],
+    'g2.2xlarge':  ['x86_64'],
     'cr1.8xlarge': ['x86_64'],
     'hi1.4xlarge': ['x86_64'],
     'hs1.8xlarge': ['x86_64'],
-    'c3.large': ['x86_64'],
-    'c3.xlarge': ['x86_64'],
+    'c3.large':   ['x86_64'],
+    'c3.xlarge':  ['x86_64'],
     'c3.2xlarge': ['x86_64'],
     'c3.4xlarge': ['x86_64'],
     'c3.8xlarge': ['x86_64'],
-    'i2.xlarge': ['x86_64'],
+    'i2.xlarge':  ['x86_64'],
     'i2.2xlarge': ['x86_64'],
     'i2.4xlarge': ['x86_64'],
     'i2.8xlarge': ['x86_64'],
+    'r3.large':   ['x86_64'],
+    'r3.xlarge':  ['x86_64'],
+    'r3.2xlarge': ['x86_64'],
+    'r3.4xlarge': ['x86_64'],
+    'r3.8xlarge': ['x86_64'],
+}
+
+VIRTUALIZATION_BY_INSTANCE_TYPES = {
+    "m1.small":    "pvm",
+    "m1.medium":   "pvm",
+    "m1.large":    "pvm",
+    "m1.xlarge":   "pvm",
+    "t1.micro":    "pvm",
+    "c1.medium":   "pvm",
+    "c1.xlarge":   "pvm",
+    "m2.xlarge":   "pvm",
+    "m2.2xlarge":  "pvm",
+    "m2.4xlarge":  "pvm",
+    "cc1.4xlarge": "hvm",
+    "cc2.8xlarge": "hvm",
+    "cg1.4xlarge": "hvm",
+    "hs1.8xlarge": "hvm",
+    "hi1.4xlarge": "hvm",
+    "m3.xlarge":   "hvm",
+    "m3.2xlarge":  "hvm",
+    "cr1.8xlarge": "hvm",
+    "i2.xlarge":   "hvm",
+    "i2.2xlarge":  "hvm",
+    "i2.4xlarge":  "hvm",
+    "i2.8xlarge":  "hvm",
+    "c3.large":    "pvm",
+    "c3.xlarge":   "pvm",
+    "c3.2xlarge":  "pvm",
+    "c3.4xlarge":  "pvm",
+    "c3.8xlarge":  "pvm",
+    "r3.large":    "hvm",
+    "r3.xlarge":   "hvm",
+    "r3.2xlarge":  "hvm",
+    "r3.4xlarge":  "hvm",
+    "r3.8xlarge":  "hvm"
+}
+
+DISKS_BY_INSTANCE = {
+    "m1.small":    1,
+    "m1.medium":   1,
+    "m1.large":    2,
+    "m1.xlarge":   4,
+    "t1.micro":    1,
+    "c1.medium":   1,
+    "c1.xlarge":   4,
+    "m2.xlarge":   1,
+    "m2.2xlarge":  1,
+    "m2.4xlarge":  2,
+    "cc1.4xlarge": 2,
+    "cc2.8xlarge": 4,
+    "cg1.4xlarge": 2,
+    "hs1.8xlarge": 24,
+    "cr1.8xlarge": 2,
+    "hi1.4xlarge": 2,
+    "m3.xlarge":   0,
+    "m3.2xlarge":  0,
+    "i2.xlarge":   1,
+    "i2.2xlarge":  2,
+    "i2.4xlarge":  4,
+    "i2.8xlarge":  8,
+    "c3.large":    2,
+    "c3.xlarge":   2,
+    "c3.2xlarge":  2,
+    "c3.4xlarge":  2,
+    "c3.8xlarge":  2,
+    "r3.large":    1,
+    "r3.xlarge":   1,
+    "r3.2xlarge":  1,
+    "r3.4xlarge":  1,
+    "r3.8xlarge":  2
 }
 
 MICRO_INSTANCE_TYPES = ['t1.micro']
@@ -159,8 +234,10 @@ M3_COMPUTE_TYPES = ['c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge',
 
 I2_STORAGE_TYPES = ['i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge']
 
+R3_MEMORY_TYPES = ['r3.large', 'r3.xlarge', 'r3.2xlarge', 'r3.4xlarge', 'r3.8xlarge']
+
 HVM_ONLY_TYPES = (CLUSTER_COMPUTE_TYPES + CLUSTER_GPU_TYPES +
-                  CLUSTER_HIMEM_TYPES + I2_STORAGE_TYPES)
+                  CLUSTER_HIMEM_TYPES + I2_STORAGE_TYPES + R3_MEMORY_TYPES)
 
 HVM_TYPES = (HVM_ONLY_TYPES + HI_IO_TYPES + HI_STORAGE_TYPES + SEC_GEN_TYPES +
              M3_COMPUTE_TYPES)
