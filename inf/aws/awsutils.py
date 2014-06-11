@@ -1525,6 +1525,9 @@ class EasyEC2(EasyAWS):
 
 
 class EasyVPC(EasyAWS):
+    """
+    Functions to work with VPCs
+    """
     DefaultHost = 's3.amazonaws.com'
     _calling_format = boto.s3.connection.OrdinaryCallingFormat()
 
@@ -1542,36 +1545,90 @@ class EasyVPC(EasyAWS):
         super(EasyVPC, self).__init__(aws_access_key_id, aws_secret_access_key,
                                       boto.connect_vpc, **kwargs)
 
-    def create_vpc(self, cidr_block):
-        return self.conn.create_vpc(cidr_block=cidr_block)
+        self.ec2_conn = self._get_ec2(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                                      aws_region_name="us-east-1")
 
-    def delete_vpc(self, vpc_id):
+    def create_vpc(self, cidr_block,  new_internet_gateway=True):
         """
-        Force delete the vpc
+        Create a new VPC and an internet gateway and associate the gateway with the VPC
         """
+        data = {}
+        vpc = self.conn.create_vpc(cidr_block=cidr_block)
+        data["vpc"] = vpc
+
+        if new_internet_gateway:
+            igw = self.associate_gateway_with_vpc(vpc_id=vpc.id)
+            data["internet_gateway"] = igw
+
+        return data
+
+    def create_subnet(self, vpc_id, cidr_block, new_route_table=True,
+                      gateway_id=None, open_route_to_gateway=True):
+        """
+        Create a new subnet within a vpc and add routes
+        Returns data={}
+        """
+        data = {}
+
+        subnet = self.conn.create_subnet(vpc_id=vpc_id, cidr_block=cidr_block)
+        data["subnet"] = subnet
+
+        if new_route_table:
+            rt = self.conn.create_route_table(vpc_id=vpc_id)
+            data["route_table"] = rt
+
+            if open_route_to_gateway:
+                self.route_subnet_to_gateway(subnet_id=subnet.id, gateway_id=gateway_id, route_table_id=rt.id)
+
+        return data
+
+    def associate_gateway_with_vpc(self, vpc_id, internet_gateway_id=None):
+        """
+        Create an internet gateway and attach to the vpc.
+        """
+        if internet_gateway_id is None:
+            igw = self.conn.create_internet_gateway()
+            internet_gateway_id = igw.id
+        self.conn.attach_internet_gateway(internet_gateway_id=internet_gateway_id, vpc_id=vpc_id)
+        return igw
+
+    def route_subnet_to_gateway(self, subnet_id, gateway_id, route_table_id):
+        """
+        Allow subnet to route to the internet gateway
+        """
+        self.conn.create_route(route_table_id=route_table_id, destination_cidr_block="0.0.0.0/0", gateway_id=gateway_id)
+        self.conn.associate_route_table(route_table_id=route_table_id, subnet_id=subnet_id)
+
+    def delete_vpc(self, vpc_id, force=False):
+        """
+        Delete the vpc. If force is true delete all dependencies first
+        and the delete the VPC
+        """
+        if force:
+            # we will delete all dependencies
+
+             #delete any internet gateways
+            vpc_igws = self.conn.get_all_internet_gateways(filters={'attachment.vpc-id': vpc_id})
+            for igw in vpc_igws:
+                self.conn.detach_internet_gateway(internet_gateway_id=igw.id, vpc_id=vpc_id)
+                self.conn.delete_internet_gateway(internet_gateway_id=igw.id)
+
+            # clean up the route tables
+            vpc_route_tables = self.conn.get_all_route_tables(filters={'vpc-id': vpc_id})
+            for rt in vpc_route_tables:
+                self.conn.delete_route_table(route_table_id=rt.id)
+
+            #todo: we need to clean the instances too.
+            # Clean up the subnets
+            vpc_subnets = self.conn.get_all_subnets(filters={'vpc-id': vpc_id})
+            for subnet in vpc_subnets:
+                self.conn.delete_subnet(subnet_id=subnet.id)
+
         return self.conn.delete_vpc(vpc_id=vpc_id)
 
-    def create_subnet(self, vpc_id, cidr_block):
-        """
-        Create a new subnet within a vpc
-        """
-        return self.conn.create_subnet(vpc_id=vpc_id, cidr_block=cidr_block)
-
-    def create_and_associate_internet_gateway(self, vpc_id, subnet_id):
-        """
-         -Create a new subnet within a vpc
-         -Create a custom route table, routes to the internet gateway and attach it to the subnet
-         -This is so that ip's inside the VPC can route traffic to destinations outside the VPC
-        """
-        # create an internet gateway and attach to the vpc
-        igw = self.conn.create_internet_gateway()
-        self.conn.attach_internet_gateway(internet_gateway_id=igw.id, vpc_id=vpc_id)
-
-        # route table
-        rt = self.conn.create_route_table(vpc_id=vpc_id)
-        self.conn.create_route(route_table_id=rt.id, destination_cidr_block="0.0.0.0/0", gateway_id=igw.id)
-        self.conn.associate_route_table(route_table_id=rt.id, subnet_id=subnet_id)
-        return igw
+    def _get_ec2(self, aws_access_key_id, aws_secret_access_key, aws_region_name):
+        return EasyEC2(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                       aws_region_name=aws_region_name)
 
 
 class EasyS3(EasyAWS):

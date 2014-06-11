@@ -548,15 +548,22 @@ def get_class(kls):
         m = getattr(m, comp)
     return m
 
+
 class Dct(object):
     """
+    Dictionary utils
     """
     @staticmethod
-    def get(dict, key, default=None):
-        val = dict.get(key, default)
+    def get(dictionary, key, default=None):
+        val = dictionary.get(key, default)
         if val is None:
             raise Exception("Expected value for key {0}.".format(key))
         return val
+
+    @staticmethod
+    def contains_key(dictionary, key):
+        return not (dictionary.get(key, None) is None)
+
 
 class AttributeDict(dict):
     """

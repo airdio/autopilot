@@ -1,66 +1,92 @@
 #! /user/bin python
 
 from autopilot.common.utils import Dct
-from autopilot.inf.inf import Inf, InfRequestContext
+from autopilot.inf.inf import Inf, InfResponseContext
 from autopilot.inf.aws import awsutils
+from autopilot.inf.aws import awsexception
 
 
-class AWSInfRequestContext(InfRequestContext):
+class AWSInfResponseContext(InfResponseContext):
         def __init__(self, spec, callback=None):
-            InfRequestContext.__init__(self, spec, callback)
-
+            InfResponseContext.__init__(self, spec, callback)
 
 class AWSInf(Inf):
     """
     AWS Infrastructure functions
     """
-    def __init__(self, aws_access_key=None,
-                 aws_secret_key=None):
+    def __init__(self, aws_access_key=None, aws_secret_key=None):
         Inf.__init__(self)
         self.aws_access_key = aws_access_key
         self.aws_secret_key = aws_secret_key
         self.vpc_conn = self._get_vpc()
         self.ec2_conn = self._get_ec2()
 
-    def new_env(self, env_spec={}, callback=None):
+    def init_stack(self, stack_spec={}, callback=None):
         """
         Create a deployment environment based on the spec.
         At minimum this will create:
         1. VPC and internet gateway attache to the VPC
-        2. Security group with inbound traffic for 0.0.0.0/0 on port 22
-           attached to the VPC
-        3. A subnet
-        4. Create a new key_pair ???
         """
-        # create a vpc
-        vpc = self.vpc_conn.create_vpc(cidr_block=Dct.get(env_spec, "cidr", "10.0.0.0/16"))
-        env_spec["vpc_id"] = vpc.id
+        rc = AWSInfResponseContext(stack_spec, callback)
+        errors = []
+        try:
+            # create a vpc and a default internet gateway
+            data = self.vpc_conn.create_vpc(cidr_block=Dct.get(stack_spec, "cidr", "10.0.0.0/16"))
+            stack_spec["vpc_id"] = data["vpc"].id
+            stack_spec["internet_gateway_id"] = data["internet_gateway"].id
 
-        # create a subnet within the vpc
-        subnet = self.vpc_conn.create_subnet(vpc_id=env_spec["vpc_id"], cidr_block=Dct.get(env_spec, "cidr", "10.0.0.0/24"))
-        env_spec["subnet_id"] = subnet.id
-
-        # setup routes and internet gateway so that instances inside the vpc can route outside the vpc
-        igw = self.vpc_conn.create_and_associate_internet_gateway(vpc_id=env_spec["vpc_id"], subnet_id=env_spec["subnet_id"])
-        env_spec["internet_gateway_id"] = igw.id
-
-        # create a security group and attach it to the vpc
-        ec2conn = self._get_ec2()
-        sg = ec2conn.create_group(name="sg_{0}".format(env_spec["uname"]), description=None,
-                                  auth_ssh=True, vpc_id=env_spec["vpc_id"], auth_spec=Dct.get(env_spec, "auth_spec", []))
-
-        env_spec["security_group_id"] = sg.id
+        except Exception, e:
+            errors.extend(e)
 
         # return updated spec
-        return AWSInfRequestContext(env_spec, callback)
+        rc.close(stack_spec, errors)
+        return rc
 
-    def clean_env(self, env_spec={}, callback=None):
+    def init_role(self, role_spec={}, callback=None):
         """
-        Clean up the environemnt
+        1. Create a subnet for the role with route tables and security groups
+        2. Create security group with inbound traffic for 0.0.0.0/0 on port 22 attached to the VPC
+           subnet_id=stack_spec["subnet_id"]
         """
-        self.vpc_conn.delete_vpc(vpc_id=Dct.get(env_spec, "vpc_id"))
 
-    def new_instance(self, instance_spec={}, tags=[], callback=None):
+        rc = AWSInfResponseContext(role_spec, callback)
+        errors = []
+        if not Dct.contains_key(role_spec, "vpc_id"):
+            raise awsexception.VPCDoesNotExists()
+
+        try:
+            # create a subnet within the vpc
+            data = self.vpc_conn.create_subnet(vpc_id=role_spec["vpc_id"], cidr_block=Dct.get(role_spec, "cidr", "10.0.0.0/24"),
+                                               new_route_table=True, gateway_id=role_spec["internet_gateway_id"],
+                                               open_route_to_gateway=True)
+
+            role_spec["subnet_id"] = data["subnet"].id
+            role_spec["route_table_id"] = data["route_table"].id
+
+            # # create a security group and attach it to the vpc
+            # ec2conn = self._get_ec2()
+            # sg = ec2conn.create_group(name="sg_{0}".format(role_spec["uname"]), description=None,
+            #                           auth_ssh=True, vpc_id=role_spec["vpc_id"], auth_spec=Dct.get(role_spec, "auth_spec", []))
+
+            # role_spec["security_group_id"] = sg.id
+            # self.vpc_conn.associate_gateway_with_subnet(vpc_id=role_spec["vpc_id"], subnet_id=role_spec["subnet_id"],
+            #                                            gateway_id=role_spec["internet_gateway_id"])
+        except Exception, e:
+            #errors.extend(e)
+            print "Error is :{0}".format(e)
+            raise e
+
+        # return updated spec
+        rc.close(role_spec, errors)
+        return rc
+
+    def clean_stack(self, env_spec={}, delete_dependencies=False, callback=None):
+        """
+        Clean up the environment
+        """
+        self.vpc_conn.delete_vpc(vpc_id=Dct.get(env_spec, "vpc_id"), force=delete_dependencies)
+
+    def provision_role(self, instance_spec={}, tags=[], callback=None):
         """
         Provision a set of machines asynchronously as per spec
         Returns a AWSInfRequestContext context
@@ -70,7 +96,7 @@ class AWSInf(Inf):
         reservation = self.ec2_conn.request_instances(image_id=instance_spec["image_id"], instance_type=instance_spec["instance_type"],
                                             count=instance_spec["count"], security_group_ids=[sg.id],
                                             subnet_id=instance_spec["subnet_id"])
-        return AWSInfRequestContext(instance_spec, self.ec2_conn, reservation)
+        return AWSInfResponseContext(instance_spec, self.ec2_conn, reservation)
 
     def _get_ec2(self):
         return awsutils.EasyEC2(aws_access_key_id = self.aws_access_key,

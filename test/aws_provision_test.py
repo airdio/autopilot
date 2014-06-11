@@ -20,22 +20,45 @@ class AwsProvisionTests(AWStest):
     """
     AWS Tests
     """
-    def test_new_environment(self):
+    def test_stack_init(self):
         a = self.get_aws_inf()
         spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
-            "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
-                          {"protocol": "tcp", "from": 3306, "to": 3306}]
         }
+
         try:
-            a.new_env(spec)
-            self.at(len(spec["vpc_id"]) > 0, "vpc_id")
-            self.at(len(spec["subnet_id"]) > 0, "subnet_id")
-            self.at(len(spec["internet_gateway_id"]) > 0, "internet_gateway_id")
-            self.at(len(spec["security_group_id"]) > 0, "security_group_id")
+            rc = a.init_stack(spec)
+            self.ae(len(rc.errors), 0, "errors found")
+            self.at(len(rc.spec["vpc_id"]) > 0, "vpc_id")
+            self.at(len(rc.spec["internet_gateway_id"]) > 0, "internet_gateway_id")
         finally:
-            a.clean_env(spec)
+            self.delete_vpc(spec, delete_dependencies=True)
+
+    def test_role_init(self):
+        a = self.get_aws_inf()
+        spec = {
+            "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+            "domain": "*.aptest.com",
+        }
+
+        try:
+            rcstack = a.init_stack(spec)
+            role_spec = {
+                "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+                "vpc_id": rcstack.spec["vpc_id"],
+                "internet_gateway_id": rcstack.spec["internet_gateway_id"],
+                "cidr": "10.0.0.0/24",
+                "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
+                              {"protocol": "tcp", "from": 3306, "to": 3306}],
+            }
+            rcrole = a.init_role(role_spec)
+
+            self.ae(len(rcrole.errors), 0, "errors found")
+            self.at(len(rcrole.spec["subnet_id"]) > 0, "subnet_id")
+            self.at(len(rcrole.spec["route_table_id"]) > 0, "route_table_id")
+        finally:
+            self.delete_vpc(rcrole.spec, delete_dependencies=True)
 
     def test_instance_provision(self):
         spec = {

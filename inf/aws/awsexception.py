@@ -95,5 +95,9 @@ class SpotHistoryError(AWSError):
         self.msg = "no spot price history for the dates specified: "
         self.msg += "%s - %s" % (start, end)
 
+class VPCDoesNotExists(AWSError):
+    def __init__(self):
+        self.msg = "VPC does not exists or invalid "
+
 class PropagationException(AWSError):
     pass
