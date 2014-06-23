@@ -124,7 +124,7 @@ class AsyncTask(Task):
 
     def on_run(self, callback):
         self.asyncfinalcb = callback
-        taskpool.spawn(self.on_async_run, callback=self._localasync_callback)
+        taskpool.spawn(func=self.on_async_run, callback=self._localasync_callback)
 
     # override in derived class
     def on_async_run(self):
@@ -132,7 +132,7 @@ class AsyncTask(Task):
         raise Exception("should not be called")
 
     def on_rollback(self, callback):
-        taskpool.spawn(self.on_async_rollback)
+        taskpool.spawn(func=self.on_async_rollback)
 
     # override in derived rollback
     def on_async_rollback(self):

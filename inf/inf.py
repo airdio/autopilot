@@ -1,17 +1,34 @@
 #! /usr/bin/python
 
+import gevent
 
 class InfResponseContext(object):
         def __init__(self, spec, callback=None, errors=[]):
             self.spec = spec
             self.callback = callback
             self.errors = errors
+            self.closed = False
 
-        def close(self, new_spec, errors=[]):
-            self.spec = new_spec
-            self.errors.extend(errors)
-            if self.callback is not None:
+        def close(self, new_spec=None, new_errors=[]):
+            if new_spec:
+                self.spec = new_spec
+            if new_errors:
+                self.errors.extend(new_errors)
+            # close after updating the spec and errors
+            self.closed = True
+            if self.callback:
                 self.callback(self)
+
+        def wait(self, timeout=30, interval=1):
+            """
+            gevent based wait. gevent.sleep will yield
+            Should mostly be used for testing. Production code should not wait
+            """
+            #todo: warn if called in non-dev deployments
+            tries = timeout/interval
+            while tries > 0 and not self.closed:
+                tries -= 1
+                gevent.sleep(interval)
 
 
 class Inf(object):
@@ -39,7 +56,7 @@ class Inf(object):
         """
         pass
 
-    def provision_role(self, role_spec={}, tags=[], callback=None):
+    def provision(self, role_spec={}, tags=[], callback=None):
         """
         Provision the role as per spec
         """

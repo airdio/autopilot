@@ -5,9 +5,9 @@ import os
 from autopilot.common.logger import log
 #from cloud.aws import static
 
+
 class AutopilotException(Exception):
-    def __init__(self, *args):
-        self.args = args
+    def __init__(self, *args, **kwargs):
         self.msg = args[0]
 
     def __str__(self):
@@ -27,6 +27,12 @@ class RemoteCommandNotFound(CommandNotFound):
     """Raised when command is not found on a *remote* system's PATH """
     def __init__(self, cmd):
         self.msg = "command not found on remote system: '%s'" % cmd
+
+
+class AWSInstanceProvisionTimeout(AutopilotException):
+    def __init__(self, instances):
+        self.msg = "Timedout waiting for instances to start"
+        self.instances = instances
 
 
 class SSHError(AutopilotException):
@@ -66,13 +72,23 @@ class SSHAccessDeniedViaAuthKeys(AutopilotException):
     'toggled' via cloud-init)
     """
     def __init__(self, user):
-        self.msg = user_msgs.authkeys_access_denied % dict(user=user)
+        self.msg = "Access denied via AuthKeys for: {0}".format(user)
 
 
 class SCPException(AutopilotException):
     """SCP exception class"""
     pass
 
+
+class SecurityGroupDoesNotExist(AutopilotException):
+    """
+    Raised when aws security group is not found
+    """
+    def __init__(self, security_group_name=None, security_group_id=None):
+        if security_group_name:
+            self.msg = "Security group not found: {0}".format(security_group_name)
+        else:
+            self.msg = "Security group not found: {0}".format(security_group_id)
 
 class InvalidIsoDate(AutopilotException):
     def __init__(self, date):
@@ -81,74 +97,6 @@ class InvalidIsoDate(AutopilotException):
 
 class InvalidHostname(AutopilotException):
     pass
-
-
-class ConfigError(AutopilotException):
-    """Base class for all config related errors"""
-
-
-class ConfigSectionMissing(ConfigError):
-    pass
-
-
-class ConfigHasNoSections(ConfigError):
-    def __init__(self, cfg_file):
-        self.msg = "No valid sections defined in config file %s" % cfg_file
-
-
-class PluginNotFound(ConfigError):
-    def __init__(self, plugin):
-        self.msg = 'Plugin "%s" not found in config' % plugin
-
-
-class NoDefaultTemplateFound(ConfigError):
-    def __init__(self, options=None):
-        msg = "No default cluster template specified.\n\n"
-        msg += "To set the default cluster template, set DEFAULT_TEMPLATE "
-        msg += "in the [global] section of the config to the name of one of "
-        msg += "your cluster templates"
-        optlist = ', '.join(options)
-        if options:
-            msg += '\n\nCurrent Templates:\n\n' + optlist
-        self.msg = msg
-        self.options = options
-        self.options_list = optlist
-
-
-class ConfigNotFound(ConfigError):
-    def __init__(self, *args):
-        self.msg = args[0]
-        self.cfg = args[1]
-        self.template = config.copy_paste_template
-
-    def create_config(self):
-        cfg_parent_dir = os.path.dirname(self.cfg)
-        if not os.path.exists(cfg_parent_dir):
-            os.makedirs(cfg_parent_dir)
-        cfg_file = open(self.cfg, 'w')
-        cfg_file.write(config.config_template)
-        cfg_file.close()
-        os.chmod(self.cfg, 0600)
-        log.info("Config template written to %s" % self.cfg)
-        log.info("Please customize the config template")
-
-    def display_options(self):
-        print 'Options:'
-        print '--------'
-        print '[1] Show the StarCluster config template'
-        print '[2] Write config template to %s' % self.cfg
-        print '[q] Quit'
-        resp = raw_input('\nPlease enter your selection: ')
-        if resp == '1':
-            print self.template
-        elif resp == '2':
-            print
-            self.create_config()
-
-
-class KeyNotFound(ConfigError):
-    def __init__(self, keyname):
-        self.msg = "key %s not found in config" % keyname
 
 
 class InvalidDevice(AutopilotException):

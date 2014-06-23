@@ -14,8 +14,11 @@ class GeventPool(object):
         self.capacity = size
         self.pool = pool.Pool(self.capacity)
 
-    def spawn(self, func, args=None, callback=None):
-        sp = GeventPool.SpawnContext(self.pool, func, args, callback)
+    def spawn(self, func, callback=None, delay=0, *args,  **kwargs):
+        """
+        Schedule func in the gevent pool. callback() once func returns
+        """
+        sp = GeventPool.SpawnContext(gpool=self.pool, func=func, callback=callback, delay=delay, args=args, kwargs=kwargs)
         return sp.spawn()
 
     def sleep(self, seconds=0):
@@ -28,15 +31,26 @@ class GeventPool(object):
         """
         SpawnContext for gevent pool
         """
-        def __init__(self, gpool, func, args, finalcb):
+        def __init__(self, gpool, func, finalcb=None, delay=0, *args, **kwargs):
             self.finalcb = finalcb
             self.func = func
-            self.args = args
             self.gpool = gpool
+            self.delay = delay
+            self.args = args
+            self.kwargs = kwargs
 
         def spawn(self):
-            gr = self.gpool.spawn(self.func)
+            if self.delay > 0:
+                gr = self._spawn_later()
+            else:
+                gr = self.gpool.spawn(self.func)
             gr.link(self._linkcb)
+
+        def _spawn_later(self):
+            def psuedo_later():
+                gevent.sleep(seconds=self.delay)
+                self.func()
+            return self.gpool.spawn(psuedo_later)
 
         def _linkcb(self, greenlet):
             ## Note:
@@ -45,9 +59,11 @@ class GeventPool(object):
             ## screen if self.func raises an unhandled exception
             try:
                 result = greenlet.get()
-                self.finalcb(result, None)
+                if self.finalcb:
+                    self.finalcb(result, None)
             except Exception, e:
-                self.finalcb(None, e)
+                if self.finalcb:
+                    self.finalcb(None, e)
 
 # todo: size should come from settings
 taskpool = GeventPool(10)

@@ -25,10 +25,13 @@ import time
 import base64
 import string
 import tempfile
+import gevent
 
 import boto
+import boto.exception
 import boto.ec2
 import boto.s3.connection
+from boto.ec2.networkinterface import NetworkInterfaceSpecification, NetworkInterfaceCollection
 from boto import config as boto_config
 from boto.connection import HAVE_HTTPS_CONNECTION
 
@@ -259,18 +262,6 @@ class EasyEC2(EasyAWS):
         finally:
             s.stop()
 
-    def create_vpc(self, name, description, cidr,
-                   subnet_cidr, security_group=[]):
-        """
-        Creates a VPC and a subnet inside it.
-        If security group is not specified then creates a default
-        with inbound rules
-        - [0.0.0.0/0  TCP port 22]
-        - [0.0.0.0/0  TCP port 80]
-        """
-        log.info("awsutils", "Creating VPC %s..." % name)
-        self.conn.cre
-
     def create_group(self, name, description, auth_ssh=False,
                      auth_group_traffic=False, vpc_id=None, auth_spec={}):
         """
@@ -283,7 +274,7 @@ class EasyEC2(EasyAWS):
         sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
         while not self.get_group_or_none(name):
             log.info("awsutils", "Waiting for security group %s..." % name)
-            time.sleep(3)
+            gevent.sleep(5)
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             self.conn.authorize_security_group(group_id=sg.id,
@@ -477,7 +468,8 @@ class EasyEC2(EasyAWS):
                           launch_group=None,
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
-                          block_device_map=None, subnet_id=None):
+                          block_device_map=None, subnet_id=None,
+                          associate_public_ip=False):
         """
         Convenience method for running spot or flat-rate instances
         """
@@ -511,13 +503,22 @@ class EasyEC2(EasyAWS):
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap
 
+        network_interfaces = None
+        # ##ExternalBug: Attaching network interfaces does not work. AWS does not like it
+        # if associate_public_ip:
+        #     network_interface = NetworkInterfaceSpecification(subnet_id=subnet_id,
+        #                                                       groups=security_groups,
+        #                                                       associate_public_ip_address=associate_public_ip)
+        #     network_interfaces = NetworkInterfaceCollection(network_interface)
+
         shared_kwargs = dict(instance_type=instance_type,
                              key_name=key_name,
                              subnet_id=subnet_id,
                              placement=placement,
                              placement_group=placement_group,
                              user_data=user_data,
-                             block_device_map=block_device_map)
+                             block_device_map=block_device_map,
+                             network_interfaces=network_interfaces)
 
         if price:
             return self.request_spot_instances(
@@ -530,7 +531,7 @@ class EasyEC2(EasyAWS):
             return self.run_instances(
                 image_id,
                 min_count=min_count, max_count=max_count,
-                security_groups=security_groups,
+                security_group_ids=security_group_ids,
                 **shared_kwargs)
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
@@ -600,7 +601,10 @@ class EasyEC2(EasyAWS):
     def run_instances(self, image_id, instance_type='m1.small', min_count=1,
                       max_count=1, key_name=None, security_groups=None, security_group_ids=None,
                       placement=None, user_data=None, placement_group=None,
-                      block_device_map=None, subnet_id=None):
+                      block_device_map=None, subnet_id=None, network_interfaces=None):
+        """
+        Spin up new instances
+        """
         kwargs = dict(
             instance_type=instance_type,
             min_count=min_count,
@@ -610,13 +614,14 @@ class EasyEC2(EasyAWS):
             placement=placement,
             user_data=user_data,
             placement_group=placement_group,
-            block_device_map=block_device_map
+            block_device_map=block_device_map,
         )
         if subnet_id:
             # kwargs.update(
             #     security_group_ids=self.get_securityids_from_names(
             #         security_groups))
             kwargs.update(security_group_ids=security_group_ids)
+            kwargs.update(network_interfaces=network_interfaces)
             return self.conn.run_instances(image_id, **kwargs)
         else:
             kwargs.update(security_groups=security_groups)

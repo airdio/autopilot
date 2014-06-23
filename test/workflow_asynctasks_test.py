@@ -11,7 +11,7 @@ from autopilot.common.asyncpool import taskpool
 from autopilot.test.common import tasks
 from autopilot.test.common.tasks import FetchUrlTask
 from autopilot.common.apenv import ApEnv
-from autopilot.test.aptest import APtest
+from autopilot.test.common.aptest import APtest
 from autopilot.workflows.workflow_model import WorkflowModel
 from autopilot.workflows.tasks.group import Group, GroupSet
 from autopilot.workflows.tasks.task import TaskResult, TaskState

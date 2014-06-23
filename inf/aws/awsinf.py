@@ -1,18 +1,78 @@
 #! /user/bin python
 
+import time
+from autopilot.common import exception
 from autopilot.common.utils import Dct
+from autopilot.common.asyncpool import taskpool
 from autopilot.inf.inf import Inf, InfResponseContext
 from autopilot.inf.aws import awsutils
 from autopilot.inf.aws import awsexception
 
 
 class AWSInfResponseContext(InfResponseContext):
-        def __init__(self, spec, callback=None):
-            InfResponseContext.__init__(self, spec, callback)
+    def __init__(self, aws_inf, spec, callback=None):
+        """
+        Response context base class for tracking AWS resquests
+        """
+        InfResponseContext.__init__(self, spec, callback)
+
+
+class AwsInfProvisionResponseContext(AWSInfResponseContext):
+    """
+    Response Context object to track AWS instance provisioning requests
+    """
+    def __init__(self, aws_inf, spec, reservation, callback=None):
+        AWSInfResponseContext.__init__(self, aws_inf=aws_inf, spec=spec, callback=callback)
+        self.reservation = reservation
+
+    def _blocking_wait_for_instances(self, timeout=180, interval=5):
+        """
+        Should only use for testing. Production code should not call this
+        """
+        # is already closed
+        if self.closed:
+            return True
+
+        tries = timeout/interval
+        pending = True
+        while tries > 0 and pending:
+            tries -= 1
+            time.sleep(interval)
+            pending = self.are_any_instances_pending()
+
+        # false indicates that the task was not a success even after
+        # specified wait
+        return not pending
+
+    def are_any_instances_pending(self):
+        for instance in self.reservation.instances:
+            instance.update()
+            # if any instance is pending return True
+            if instance.state == "pending":
+                return True
+        return False
+
+    def close_on_instances_ready(self, timeout=180, interval=10):
+        """
+        Close when all instances are non-pending
+        """
+        max_tries = timeout/interval
+
+        def try_close(attempt=1):
+            if attempt > max_tries:
+                # we timed out
+                self.close(errors=[exception.AWSInstanceProvisionTimeout(self.reservation.instances)])
+            else:
+                if self.are_any_instances_pending():
+                    taskpool.spawn(func=try_close, callback=None, delay=interval, attempt=attempt+1)
+                else:
+                    self.close()
+        try_close()
+
 
 class AWSInf(Inf):
     """
-    AWS Infrastructure functions
+    AWS Infrastructure management functions
     """
     def __init__(self, aws_access_key=None, aws_secret_key=None):
         Inf.__init__(self)
@@ -25,10 +85,10 @@ class AWSInf(Inf):
         """
         Create a deployment environment based on the spec.
         At minimum this will create:
-        1. VPC and internet gateway attache to the VPC
+        1. VPC
+        2. Internet gateway with internet routing enabled and attach to the VPC
         """
-        rc = AWSInfResponseContext(stack_spec, callback)
-        errors = []
+        rc = AWSInfResponseContext(aws_inf=self, spec=stack_spec, callback=callback)
         try:
             # create a vpc and a default internet gateway
             data = self.vpc_conn.create_vpc(cidr_block=Dct.get(stack_spec, "cidr", "10.0.0.0/16"))
@@ -36,21 +96,18 @@ class AWSInf(Inf):
             stack_spec["internet_gateway_id"] = data["internet_gateway"].id
 
         except Exception, e:
-            errors.extend(e)
+            rc.errors.extend(e)
 
         # return updated spec
-        rc.close(stack_spec, errors)
+        rc.close(stack_spec)
         return rc
 
     def init_role(self, role_spec={}, callback=None):
         """
-        1. Create a subnet for the role with route tables and security groups
-        2. Create security group with inbound traffic for 0.0.0.0/0 on port 22 attached to the VPC
-           subnet_id=stack_spec["subnet_id"]
+        We need a VPC in the role_spec that we can use
+        Create a subnet for the role with route tables and security groups
         """
-
-        rc = AWSInfResponseContext(role_spec, callback)
-        errors = []
+        rc = AWSInfResponseContext(aws_inf=self, spec=role_spec, callback=callback)
         if not Dct.contains_key(role_spec, "vpc_id"):
             raise awsexception.VPCDoesNotExists()
 
@@ -62,22 +119,11 @@ class AWSInf(Inf):
 
             role_spec["subnet_id"] = data["subnet"].id
             role_spec["route_table_id"] = data["route_table"].id
-
-            # # create a security group and attach it to the vpc
-            # ec2conn = self._get_ec2()
-            # sg = ec2conn.create_group(name="sg_{0}".format(role_spec["uname"]), description=None,
-            #                           auth_ssh=True, vpc_id=role_spec["vpc_id"], auth_spec=Dct.get(role_spec, "auth_spec", []))
-
-            # role_spec["security_group_id"] = sg.id
-            # self.vpc_conn.associate_gateway_with_subnet(vpc_id=role_spec["vpc_id"], subnet_id=role_spec["subnet_id"],
-            #                                            gateway_id=role_spec["internet_gateway_id"])
         except Exception, e:
-            #errors.extend(e)
-            print "Error is :{0}".format(e)
-            raise e
+            rc.errors.extend(e)
 
         # return updated spec
-        rc.close(role_spec, errors)
+        rc.close(role_spec)
         return rc
 
     def clean_stack(self, env_spec={}, delete_dependencies=False, callback=None):
@@ -86,17 +132,67 @@ class AWSInf(Inf):
         """
         self.vpc_conn.delete_vpc(vpc_id=Dct.get(env_spec, "vpc_id"), force=delete_dependencies)
 
-    def provision_role(self, instance_spec={}, tags=[], callback=None):
+    def provision(self, instance_spec={}, tags=[], callback=None):
         """
-        Provision a set of machines asynchronously as per spec
+        We need a subnet in the the instance_spec
+        1. Create default security group with inbound traffic for:
+            a. 22-22 (0.0.0.0/0)
+            b. Custom auth_spec
+        2. Provision a set of machines asynchronously as per spec.
         Returns a AWSInfRequestContext context
         """
-        sg = self.ec2_conn.create_group("sg_{0}".format(Dct.get(instance_spec, "uname")), description="ap security group",
-                              vpc_id=Dct.get(instance_spec, "vpc_id"))
-        reservation = self.ec2_conn.request_instances(image_id=instance_spec["image_id"], instance_type=instance_spec["instance_type"],
-                                            count=instance_spec["count"], security_group_ids=[sg.id],
-                                            subnet_id=instance_spec["subnet_id"])
-        return AWSInfResponseContext(instance_spec, self.ec2_conn, reservation)
+
+        # required parameters
+        uname = Dct.get(instance_spec, "uname")
+        image_id = Dct.get(instance_spec, "image_id")
+        instance_type = Dct.get(instance_spec, "instance_type")
+        vpc_id = Dct.get(instance_spec, "vpc_id")
+        subnet_id = Dct.get(instance_spec, "subnet_id")
+        instance_count = Dct.get(instance_spec, "instance_count")
+        associate_public_ip = Dct.get(instance_spec, "associate_public_ip", False)
+
+        # create a security group
+        sg = self.ec2_conn.create_group("sg_{0}".format(uname),
+                                        description="security group for {0}".format(uname),
+                                        auth_ssh=True, vpc_id=vpc_id,
+                                        auth_spec=Dct.get(instance_spec, "auth_spec"))
+
+        reservation = self.ec2_conn.request_instances(image_id=image_id,
+                                                      instance_type=instance_type,
+                                                      count=instance_count, security_group_ids=[sg.id],
+                                                      subnet_id=subnet_id,
+                                                      associate_public_ip=associate_public_ip)
+
+        # create a response context
+        rc = AwsInfProvisionResponseContext(aws_inf=self, spec=instance_spec, reservation=reservation, callback=callback)
+        if associate_public_ip:
+            self._associate_public_ip(response_context=rc)
+        else:
+            rc.close_on_instances_ready()
+
+        # we are not guaranteed that the instances are up here
+        # return the context so that the caller can either wait or process callback
+        return rc
+
+    def _associate_public_ip(self, response_context, timeout=180, interval=10):
+        """
+        Associate network interfaces with public ips to instances once they are up
+        """
+        max_tries = timeout/interval
+
+        def try_attach_network_interfaces(attempt=1):
+            if attempt > max_tries:
+                # we timed out
+                response_context.close(errors=[exception.AWSInstanceProvisionTimeout(response_context.reservation.instances)])
+            else:
+                if response_context.are_any_instances_pending():
+                    taskpool.spawn(func=try_attach_network_interfaces, callback=None,
+                                   delay=interval, attempt=attempt+1)
+                else:
+                    # ready. attach network interfaces and close
+                    response_context.close()
+
+        try_attach_network_interfaces()
 
     def _get_ec2(self):
         return awsutils.EasyEC2(aws_access_key_id = self.aws_access_key,
