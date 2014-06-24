@@ -463,7 +463,7 @@ class EasyEC2(EasyAWS):
             return pg
 
     def request_instances(self, image_id, price=None, instance_type='m1.small',
-                          min_count=1, max_count=1, count=1, key_name=None,
+                          min_count=1, max_count=1, key_name=None,
                           security_groups=None, security_group_ids=None,
                           launch_group=None,
                           availability_zone_group=None, placement=None,
@@ -504,7 +504,7 @@ class EasyEC2(EasyAWS):
             block_device_map = bdmap
 
         network_interfaces = None
-        # ##ExternalBug: Attaching network interfaces does not work. AWS does not like it
+        # ##ExternalBug: Attaching network interfaces with associate_public_ip does not work. AWS does not like it
         # if associate_public_ip:
         #     network_interface = NetworkInterfaceSpecification(subnet_id=subnet_id,
         #                                                       groups=security_groups,
@@ -543,6 +543,14 @@ class EasyEC2(EasyAWS):
         kwargs = locals()
         kwargs.pop('self')
         return self.conn.request_spot_instances(**kwargs)
+
+    def associate_public_ips(self, instances, subnet_id, security_group_ids):
+        """
+        Attach a network interface with public ip to each instance
+        """
+        # for instance in instances:
+        #     self.conn.create_network_interface()
+        pass
 
     def _wait_for_propagation(self, obj_ids, fetch_func, id_filter, obj_name,
                               max_retries=60, interval=5):

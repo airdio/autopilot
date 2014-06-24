@@ -82,21 +82,47 @@ class AwsProvisionTests(AWStest):
             self.delete_vpc(rcrole.spec, delete_dependencies=True)
 
     def test_instance_provision(self):
-        a = self.get_aws_inf()
+        error = None
+        result = None
+
+        def _provision_instance_callback(rcinstances, exception=None):
+            if exception:
+                error = exception
+            else:
+                rcinstances.yield_until_instances_ready()
+                result = rcinstances
+
+        # pump provision instance through the gevent pool
+        taskpool.spawn(func=AwsProvisionTests._instance_provision,
+                       args={"aws_inf": self.get_aws_inf()},
+                       callback=_provision_instance_callback)
+
+        gevent.sleep(30)
+        print "done sleeping on main greenlet"
+
+        if error:
+            raise error
+        else:
+            if not result:
+                pass
+                # raise self.timedout()
+
+    @staticmethod
+    def _instance_provision(aws_inf):
         stack_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
         }
 
         try:
-            rcstack = a.init_stack(stack_spec)
+            rcstack = aws_inf.init_stack(stack_spec)
             role_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "vpc_id": rcstack.spec["vpc_id"],
                 "internet_gateway_id": rcstack.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
             }
-            rcrole = a.init_role(role_spec)
+            rcrole = aws_inf.init_role(role_spec)
 
             instance_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
@@ -109,10 +135,8 @@ class AwsProvisionTests(AWStest):
                 "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
                               {"protocol": "tcp", "from": 3306, "to": 3306}],
             }
-            rcinstances = a.provision(instance_spec)
-            rcinstances.close_on_instances_ready()
-            gevent.sleep(10)
-
+            rcinstances = aws_inf.provision(instance_spec)
+            return rcinstances
         finally:
             pass
                 #self.delete_vpc(rcrole.spec, delete_dependencies=True)

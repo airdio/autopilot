@@ -10,39 +10,20 @@ from autopilot.inf.aws import awsexception
 
 
 class AWSInfResponseContext(InfResponseContext):
-    def __init__(self, aws_inf, spec, callback=None):
+    def __init__(self, aws_inf, spec):
         """
         Response context base class for tracking AWS resquests
         """
-        InfResponseContext.__init__(self, spec, callback)
+        InfResponseContext.__init__(self, spec)
 
 
 class AwsInfProvisionResponseContext(AWSInfResponseContext):
     """
     Response Context object to track AWS instance provisioning requests
     """
-    def __init__(self, aws_inf, spec, reservation, callback=None):
-        AWSInfResponseContext.__init__(self, aws_inf=aws_inf, spec=spec, callback=callback)
+    def __init__(self, aws_inf, spec, reservation):
+        AWSInfResponseContext.__init__(self, aws_inf=aws_inf, spec=spec)
         self.reservation = reservation
-
-    def _blocking_wait_for_instances(self, timeout=180, interval=5):
-        """
-        Should only use for testing. Production code should not call this
-        """
-        # is already closed
-        if self.closed:
-            return True
-
-        tries = timeout/interval
-        pending = True
-        while tries > 0 and pending:
-            tries -= 1
-            time.sleep(interval)
-            pending = self.are_any_instances_pending()
-
-        # false indicates that the task was not a success even after
-        # specified wait
-        return not pending
 
     def are_any_instances_pending(self):
         for instance in self.reservation.instances:
@@ -56,23 +37,33 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
         """
         Close when all instances are non-pending
         """
-        max_tries = timeout/interval
+        if self.yield_until_instances_ready(timeout=timeout, interval=interval):
+            self.close()
+        else:
+            self.close(new_errors=[exception.AWSInstanceProvisionTimeout(self.reservation.instances)])
 
-        def try_close(attempt=1):
-            if attempt > max_tries:
-                # we timed out
-                self.close(errors=[exception.AWSInstanceProvisionTimeout(self.reservation.instances)])
+    def yield_until_instances_ready(self, timeout=180, interval=10):
+        """
+        Associate network interfaces with public ips to instances once they are up
+        """
+        max_tries = timeout/interval
+        attempt = 0
+        while attempt < max_tries:
+            attempt += 1
+            if self.are_any_instances_pending():
+                taskpool.doyield(time_in_seconds=interval)
             else:
-                if self.are_any_instances_pending():
-                    taskpool.spawn(func=try_close, callback=None, delay=interval, attempt=attempt+1)
-                else:
-                    self.close()
-        try_close()
+                return True
+
+        return False
 
 
 class AWSInf(Inf):
     """
     AWS Infrastructure management functions
+
+    All wait and test actions following aws api calls are all pumped through the gevent and
+    should yield if we have monkey patched somewhere along the call chain.
     """
     def __init__(self, aws_access_key=None, aws_secret_key=None):
         Inf.__init__(self)
@@ -81,14 +72,14 @@ class AWSInf(Inf):
         self.vpc_conn = self._get_vpc()
         self.ec2_conn = self._get_ec2()
 
-    def init_stack(self, stack_spec={}, callback=None):
+    def init_stack(self, stack_spec={}):
         """
         Create a deployment environment based on the spec.
         At minimum this will create:
         1. VPC
         2. Internet gateway with internet routing enabled and attach to the VPC
         """
-        rc = AWSInfResponseContext(aws_inf=self, spec=stack_spec, callback=callback)
+        rc = AWSInfResponseContext(aws_inf=self, spec=stack_spec)
         try:
             # create a vpc and a default internet gateway
             data = self.vpc_conn.create_vpc(cidr_block=Dct.get(stack_spec, "cidr", "10.0.0.0/16"))
@@ -102,12 +93,12 @@ class AWSInf(Inf):
         rc.close(stack_spec)
         return rc
 
-    def init_role(self, role_spec={}, callback=None):
+    def init_role(self, role_spec={}):
         """
         We need a VPC in the role_spec that we can use
         Create a subnet for the role with route tables and security groups
         """
-        rc = AWSInfResponseContext(aws_inf=self, spec=role_spec, callback=callback)
+        rc = AWSInfResponseContext(aws_inf=self, spec=role_spec)
         if not Dct.contains_key(role_spec, "vpc_id"):
             raise awsexception.VPCDoesNotExists()
 
@@ -126,13 +117,13 @@ class AWSInf(Inf):
         rc.close(role_spec)
         return rc
 
-    def clean_stack(self, env_spec={}, delete_dependencies=False, callback=None):
+    def clean_stack(self, env_spec={}, delete_dependencies=False):
         """
         Clean up the environment
         """
         self.vpc_conn.delete_vpc(vpc_id=Dct.get(env_spec, "vpc_id"), force=delete_dependencies)
 
-    def provision(self, instance_spec={}, tags=[], callback=None):
+    def provision(self, instance_spec={}, tags=[]):
         """
         We need a subnet in the the instance_spec
         1. Create default security group with inbound traffic for:
@@ -157,42 +148,47 @@ class AWSInf(Inf):
                                         auth_ssh=True, vpc_id=vpc_id,
                                         auth_spec=Dct.get(instance_spec, "auth_spec"))
 
+        instance_spec["security_group_ids"] = [sg.id]
+
+        # schedule instance creation.
         reservation = self.ec2_conn.request_instances(image_id=image_id,
                                                       instance_type=instance_type,
-                                                      count=instance_count, security_group_ids=[sg.id],
+                                                      max_count=instance_count,
+                                                      security_group_ids=instance_spec["security_group_ids"],
                                                       subnet_id=subnet_id,
                                                       associate_public_ip=associate_public_ip)
 
+        instance_spec["instance_ids"] = [instance.id for instance in reservation.instances]
+
         # create a response context
-        rc = AwsInfProvisionResponseContext(aws_inf=self, spec=instance_spec, reservation=reservation, callback=callback)
+        rc = AwsInfProvisionResponseContext(aws_inf=self, spec=instance_spec, reservation=reservation)
+
+        # At this point the instances might not be fully ready. But we still call associate_public_ip
+        # which will wait for instances to be ready and then try to give a public ip to each instance
+        # this works because if use gevent.sleep to yield
         if associate_public_ip:
-            self._associate_public_ip(response_context=rc)
+            errors = self._associate_public_ip(response_context=rc)
+            rc.close(new_errors=errors)
         else:
             rc.close_on_instances_ready()
 
-        # we are not guaranteed that the instances are up here
-        # return the context so that the caller can either wait or process callback
+        # return the context
         return rc
 
-    def _associate_public_ip(self, response_context, timeout=180, interval=10):
+    def _associate_public_ip(self, response_context):
         """
         Associate network interfaces with public ips to instances once they are up
         """
-        max_tries = timeout/interval
+        errors = []
+        reservation =response_context.reservation
+        if response_context.yield_until_instances_ready():
+            self.ec2_conn.associate_public_ips(instances=reservation.instances,
+                                                subnet_id=response_context.spec["subnet_id"],
+                                                security_group_ids=response_context.spec["security_group_ids"])
+        else:
+            errors.extend(exception.AWSInstanceProvisionTimeout(reservation.instances))
 
-        def try_attach_network_interfaces(attempt=1):
-            if attempt > max_tries:
-                # we timed out
-                response_context.close(errors=[exception.AWSInstanceProvisionTimeout(response_context.reservation.instances)])
-            else:
-                if response_context.are_any_instances_pending():
-                    taskpool.spawn(func=try_attach_network_interfaces, callback=None,
-                                   delay=interval, attempt=attempt+1)
-                else:
-                    # ready. attach network interfaces and close
-                    response_context.close()
-
-        try_attach_network_interfaces()
+        return errors
 
     def _get_ec2(self):
         return awsutils.EasyEC2(aws_access_key_id = self.aws_access_key,
@@ -201,36 +197,3 @@ class AWSInf(Inf):
     def _get_vpc(self):
         return awsutils.EasyVPC(aws_access_key_id=self.aws_access_key,
                                 aws_secret_access_key=self.aws_secret_key, aws_region_name="us-east-1")
-
-# import time
-# import boto
-# import boto.ec2.networkinterface
-#
-# from settings.settings import AWS_ACCESS_GENERIC
-#
-# ec2 = boto.connect_ec2(*AWS_ACCESS_GENERIC)
-#
-# interface = boto.ec2.networkinterface.NetworkInterfaceSpecification(subnet_id='subnet-11d02d71',
-#                                                                     groups=['sg-0365c56d'],
-#                                                                     associate_public_ip_address=True)
-# interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(interface)
-#
-# reservation = ec2.run_instances(image_id='ami-a1074dc8',
-#                                 instance_type='t1.micro',
-#                                 #the following two arguments are provided in the network_interface
-#                                 #instead at the global level !!
-#                                 #'security_group_ids': ['sg-0365c56d'],
-#                                 #'subnet_id': 'subnet-11d02d71',
-#                                 network_interfaces=interfaces,
-#                                 key_name='keyPairName')
-#
-# instance = reservation.instances[0]
-# instance.update()
-# while instance.state == "pending":
-#     print instance, instance.state
-#     time.sleep(5)
-#     instance.update()
-#
-# instance.add_tag("Name", "some name")
-#
-# print "done", instance

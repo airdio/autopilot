@@ -14,15 +14,15 @@ class GeventPool(object):
         self.capacity = size
         self.pool = pool.Pool(self.capacity)
 
-    def spawn(self, func, callback=None, delay=0, *args,  **kwargs):
+    def spawn(self, func, args={}, callback=None, delay=0):
         """
         Schedule func in the gevent pool. callback() once func returns
         """
-        sp = GeventPool.SpawnContext(gpool=self.pool, func=func, callback=callback, delay=delay, args=args, kwargs=kwargs)
+        sp = GeventPool.SpawnContext(gpool=self.pool, func=func, args=args, finalcb=callback, delay=delay)
         return sp.spawn()
 
-    def sleep(self, seconds=0):
-        gevent.sleep(seconds)
+    def doyield(self, time_in_seconds=0):
+        gevent.sleep(seconds=time_in_seconds)
 
     def join(self, timeout=None):
         self.pool.join(timeout)
@@ -31,19 +31,18 @@ class GeventPool(object):
         """
         SpawnContext for gevent pool
         """
-        def __init__(self, gpool, func, finalcb=None, delay=0, *args, **kwargs):
+        def __init__(self, gpool, func, args={}, finalcb=None, delay=0):
             self.finalcb = finalcb
             self.func = func
             self.gpool = gpool
             self.delay = delay
             self.args = args
-            self.kwargs = kwargs
 
         def spawn(self):
             if self.delay > 0:
                 gr = self._spawn_later()
             else:
-                gr = self.gpool.spawn(self.func)
+                gr = self.gpool.spawn(self.func, **self.args)
             gr.link(self._linkcb)
 
         def _spawn_later(self):

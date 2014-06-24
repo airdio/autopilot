@@ -2,10 +2,10 @@
 
 import gevent
 
+
 class InfResponseContext(object):
-        def __init__(self, spec, callback=None, errors=[]):
+        def __init__(self, spec, errors=[]):
             self.spec = spec
-            self.callback = callback
             self.errors = errors
             self.closed = False
 
@@ -16,8 +16,6 @@ class InfResponseContext(object):
                 self.errors.extend(new_errors)
             # close after updating the spec and errors
             self.closed = True
-            if self.callback:
-                self.callback(self)
 
         def wait(self, timeout=30, interval=1):
             """
@@ -37,26 +35,26 @@ class Inf(object):
     All functions should return InfResponseContext.
     """
 
-    def init_stack(self, stack_spec={}, callback=None):
+    def init_stack(self, stack_spec={}):
         """
         Create a new service environment. An environment is an isolated topology like dev or staging or production
         An environment is a within a domain
         """
         pass
 
-    def clean_stack(self, stack_spec={}, delete_dependencies=False, callback=None):
+    def clean_stack(self, stack_spec={}, delete_dependencies=False):
         """
         Clean up the stack environment
         """
         pass
 
-    def init_role(self, role_spec={}, callback=None):
+    def init_role(self, role_spec={}):
         """
         Initialize role environment
         """
         pass
 
-    def provision(self, role_spec={}, tags=[], callback=None):
+    def provision(self, role_spec={}, tags=[]):
         """
         Provision the role as per spec
         """
