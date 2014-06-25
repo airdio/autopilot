@@ -85,14 +85,13 @@ class SSHClient(object):
 
     def load_private_key(self, private_key, private_key_pass=None):
         # Use Private Key.
-        log.debug('loading private key %s' % private_key)
+        log.debug(source="sshutils", msg='loading private key %s' % private_key)
         if private_key.endswith('rsa') or private_key.count('rsa'):
             pkey = self._load_rsa_key(private_key, private_key_pass)
         elif private_key.endswith('dsa') or private_key.count('dsa'):
             pkey = self._load_dsa_key(private_key, private_key_pass)
         else:
-            log.debug(
-                "specified key does not end in either rsa or dsa, trying both")
+            log.debug(source="sshutils", msg="specified key does not end in either rsa or dsa, trying both")
             pkey = self._load_rsa_key(private_key, private_key_pass)
             if pkey is None:
                 pkey = self._load_dsa_key(private_key, private_key_pass)
@@ -109,8 +108,7 @@ class SSHClient(object):
         pkey = self._pkey
         if private_key:
             pkey = self.load_private_key(private_key, private_key_pass)
-        log.debug("connecting to host %s on port %d as user %s" % (host, port,
-                                                                   username))
+        log.debug(source="sshutils", msg="connecting to host %s on port %d as user %s" % (host, port, username))
         try:
             sock = self._get_socket(host, port)
             transport = paramiko.Transport(sock)
@@ -139,7 +137,7 @@ class SSHClient(object):
             assert self.sftp is not None
         except paramiko.SFTPError, e:
             if 'Garbage packet received' in e:
-                log.debug("Garbage packet received", exc_info=True)
+                log.debug(source="sshutils", msg="Garbage packet received", exc_info=True)
                 raise exception.SSHAccessDeniedViaAuthKeys(username)
             raise
         return self
@@ -183,7 +181,7 @@ class SSHClient(object):
         try:
             rsa_key = get_rsa_key(key_location=private_key_file,
                                   passphrase=private_key_pass)
-            log.debug("Using private key %s (RSA)" % private_key)
+            log.debug(source="sshutils", msg="Using private key %s (RSA)" % private_key)
             return rsa_key
         except (paramiko.SSHException, exception.SSHError):
             log.error('invalid rsa key or passphrase specified')
@@ -193,7 +191,7 @@ class SSHClient(object):
         try:
             dsa_key = get_dsa_key(key_location=private_key_file,
                                   passphrase=private_key_pass)
-            log.info("Using private key %s (DSA)" % private_key)
+            log.info(source="sshutils",  msg="Using private key %s (DSA)" % private_key)
             return dsa_key
         except (paramiko.SSHException, exception.SSHError):
             log.error('invalid dsa key or passphrase specified')
@@ -202,7 +200,7 @@ class SSHClient(object):
     def sftp(self):
         """Establish the SFTP connection."""
         if not self._sftp or self._sftp.sock.closed:
-            log.debug("creating sftp connection")
+            log.debug(source="sshutils", msg="creating sftp connection")
             self._sftp = paramiko.SFTPClient.from_transport(self.transport)
         return self._sftp
 
@@ -210,7 +208,7 @@ class SSHClient(object):
     def scp(self):
         """Initialize the SCP client."""
         if not self._scp or not self._scp.transport.is_active():
-            log.debug("creating scp connection")
+            log.debug(source="sshutils", msg="creating scp connection")
             self._scp = scp.SCPClient(self.transport,
                                       progress=self._file_transfer_progress)
         return self._scp
@@ -301,10 +299,10 @@ class SSHClient(object):
         Removes lines matching regex from remote_file
         """
         if regex in [None, '']:
-            log.debug('no regex supplied...returning')
+            log.debug(source="sshutils", msg='no regex supplied...returning')
             return
         lines = self.get_remote_file_lines(remote_file, regex, matching=False)
-        log.debug("new %s after removing regex (%s) matches:\n%s" %
+        log.debug(source="sshutils", msg="new %s after removing regex (%s) matches:\n%s" %
                   (remote_file, regex, ''.join(lines)))
         f = self.remote_file(remote_file)
         f.writelines(lines)
@@ -396,27 +394,6 @@ class SSHClient(object):
         """
         return self.sftp.lstat(path)
 
-    @property
-    def progress_bar(self):
-        if not self._progress_bar:
-            widgets = ['FileTransfer: ', ' ', progressbar.Percentage(), ' ',
-                       progressbar.Bar(marker=progressbar.RotatingMarker()),
-                       ' ', progressbar.ETA(), ' ',
-                       progressbar.FileTransferSpeed()]
-            pbar = progressbar.ProgressBar(widgets=widgets,
-                                           maxval=1,
-                                           force_update=True)
-            self._progress_bar = pbar
-        return self._progress_bar
-
-    def _file_transfer_progress(self, filename, size, sent):
-        pbar = self.progress_bar
-        pbar.widgets[0] = filename
-        pbar.maxval = size
-        pbar.update(sent)
-        if pbar.finished:
-            pbar.reset()
-
     def _make_list(self, obj):
         if not isinstance(obj, (list, tuple)):
             return [obj]
@@ -452,8 +429,7 @@ class SSHClient(object):
             self.scp.get(remotepaths, local_path=localpath,
                          recursive=recursive)
         except Exception, e:
-            log.debug("get failed: remotepaths=%s, localpath=%s",
-                      str(remotepaths), localpath)
+            log.debug(source="sshutils", msg="get failed: remotepaths=%s, localpath=%s" % (str(remotepaths), localpath))
             raise exception.SCPException(str(e))
 
     def put(self, localpaths, remotepath='.'):
@@ -470,8 +446,7 @@ class SSHClient(object):
             self.scp.put(localpaths, remote_path=remotepath,
                          recursive=recursive)
         except Exception, e:
-            log.debug("put failed: localpaths=%s, remotepath=%s",
-                      str(localpaths), remotepath)
+            log.debug(source="sshutils", msg="put failed: localpaths=%s, remotepath=%s" % (str(localpaths), remotepath))
             raise exception.SCPException(str(e))
 
     def execute_async(self, command, source_profile=True):
@@ -559,7 +534,7 @@ class SSHClient(object):
             return
         if source_profile:
             command = "source /etc/profile && %s" % command
-        log.debug("executing remote command: %s" % command)
+        log.debug(source="sshutils", msg="executing remote command: %s" % command)
         channel.exec_command(command)
         output = self._get_output(channel, silent=silent,
                                   only_printable=only_printable)
@@ -580,12 +555,12 @@ class SSHClient(object):
                 else:
                     log.error(msg)
             else:
-                log.debug("(ignored) " + msg)
+                log.debug(source="sshutils", msg="(ignored) " + msg)
         else:
             if log_output:
-                log.debug("output of '%s':\n%s" % (command, out_str))
+                log.debug(source="sshutils", msg="output of '%s':\n%s" % (command, out_str))
             else:
-                log.debug("output of '%s' has been hidden" % command)
+                log.debug(source="sshutils", msg="output of '%s' has been hidden" % command)
         return output
 
     def has_required(self, progs):
@@ -649,13 +624,13 @@ class SSHClient(object):
             self.connect(username=user)
         else:
             user = user or self._username
-            log.debug("already connected as user %s" % user)
+            log.debug(source="sshutils", msg="already connected as user %s" % user)
 
     def interactive_shell(self, user='root'):
         orig_user = self.get_current_user()
         self.switch_user(user)
         chan = self._invoke_shell()
-        log.info('Starting Pure-Python SSH shell...')
+        log.info(source="sshutils",  msg='Starting Pure-Python SSH shell...')
         if HAS_TERMIOS:
             self._posix_shell(chan)
         else:
@@ -731,7 +706,7 @@ class SSHClient(object):
 
     def __del__(self):
         """Attempt to clean up if not explicitly closed."""
-        log.debug('__del__ called')
+        log.debug(source="sshutils", msg='__del__ called')
         self.close()
 
 
@@ -857,7 +832,7 @@ def get_private_rsa_fingerprint(key_location=None, key_file_obj=None,
     sha1digest = hashlib.sha1(k.exportKey('DER', pkcs=8)).hexdigest()
     fingerprint = insert_char_every_n_chars(sha1digest, ':', 2)
     key = key_location or key_file_obj
-    log.debug("rsa private key fingerprint (%s): %s" % (key, fingerprint))
+    log.debug(source="sshutils", msg="rsa private key fingerprint (%s): %s" % (key, fingerprint))
     return fingerprint
 
 
@@ -875,7 +850,7 @@ def get_public_rsa_fingerprint(key_location=None, key_file_obj=None,
     md5digest = hashlib.md5(pubkey.exportKey('DER')).hexdigest()
     fingerprint = insert_char_every_n_chars(md5digest, ':', 2)
     key = key_location or key_file_obj
-    log.debug("rsa public key fingerprint (%s): %s" % (key, fingerprint))
+    log.debug(source="sshutils", msg="rsa public key fingerprint (%s): %s" % (key, fingerprint))
     return fingerprint
 
 

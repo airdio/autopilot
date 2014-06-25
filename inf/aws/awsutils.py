@@ -464,8 +464,7 @@ class EasyEC2(EasyAWS):
 
     def request_instances(self, image_id, price=None, instance_type='m1.small',
                           min_count=1, max_count=1, key_name=None,
-                          security_groups=None, security_group_ids=None,
-                          launch_group=None,
+                          security_group_ids=None, launch_group=None,
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
                           block_device_map=None, subnet_id=None,
@@ -503,36 +502,35 @@ class EasyEC2(EasyAWS):
                 bdmap[img.root_device_name] = root
             block_device_map = bdmap
 
-        network_interfaces = None
-        # ##ExternalBug: Attaching network interfaces with associate_public_ip does not work. AWS does not like it
-        # if associate_public_ip:
-        #     network_interface = NetworkInterfaceSpecification(subnet_id=subnet_id,
-        #                                                       groups=security_groups,
-        #                                                       associate_public_ip_address=associate_public_ip)
-        #     network_interfaces = NetworkInterfaceCollection(network_interface)
 
         shared_kwargs = dict(instance_type=instance_type,
-                             key_name=key_name,
-                             subnet_id=subnet_id,
-                             placement=placement,
-                             placement_group=placement_group,
+                             key_name=key_name, min_count=min_count, max_count=max_count,
+                             placement=placement, placement_group=placement_group,
                              user_data=user_data,
-                             block_device_map=block_device_map,
-                             network_interfaces=network_interfaces)
+                             block_device_map=block_device_map,)
+
+        #  If we attach a network interface then set the subnet-id and security_group_ids for run_instance to None
+        if associate_public_ip:
+            network_interface = NetworkInterfaceSpecification(device_index=0, subnet_id=subnet_id,
+                                                              groups=security_group_ids,
+                                                              associate_public_ip_address=associate_public_ip)
+            network_interfaces = NetworkInterfaceCollection(network_interface)
+            shared_kwargs.update(network_interfaces=network_interfaces)
+            shared_kwargs.update(subnet_id=None)
+            shared_kwargs.update(security_group_ids=None)
+        else:
+            shared_kwargs.update(subnet_id=subnet_id)
+            shared_kwargs.update(security_group_ids=security_group_ids)
 
         if price:
             return self.request_spot_instances(
                 price, image_id,
-                count=count, launch_group=launch_group,
+                count=max_count, launch_group=launch_group,
                 security_group_ids=security_group_ids,
                 availability_zone_group=availability_zone_group,
                 **shared_kwargs)
         else:
-            return self.run_instances(
-                image_id,
-                min_count=min_count, max_count=max_count,
-                security_group_ids=security_group_ids,
-                **shared_kwargs)
+            return self.conn.run_instances(image_id, **shared_kwargs)
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,
@@ -544,7 +542,7 @@ class EasyEC2(EasyAWS):
         kwargs.pop('self')
         return self.conn.request_spot_instances(**kwargs)
 
-    def associate_public_ips(self, instances, subnet_id, security_group_ids):
+    def associate_ips(self, instances, subnet_id, security_group_ids):
         """
         Attach a network interface with public ip to each instance
         """
@@ -605,35 +603,6 @@ class EasyEC2(EasyAWS):
             self._wait_for_propagation(
                 instance_ids, self.get_all_instances, 'instance-id',
                 'instances', max_retries=max_retries, interval=interval)
-
-    def run_instances(self, image_id, instance_type='m1.small', min_count=1,
-                      max_count=1, key_name=None, security_groups=None, security_group_ids=None,
-                      placement=None, user_data=None, placement_group=None,
-                      block_device_map=None, subnet_id=None, network_interfaces=None):
-        """
-        Spin up new instances
-        """
-        kwargs = dict(
-            instance_type=instance_type,
-            min_count=min_count,
-            max_count=max_count,
-            key_name=key_name,
-            subnet_id=subnet_id,
-            placement=placement,
-            user_data=user_data,
-            placement_group=placement_group,
-            block_device_map=block_device_map,
-        )
-        if subnet_id:
-            # kwargs.update(
-            #     security_group_ids=self.get_securityids_from_names(
-            #         security_groups))
-            kwargs.update(security_group_ids=security_group_ids)
-            kwargs.update(network_interfaces=network_interfaces)
-            return self.conn.run_instances(image_id, **kwargs)
-        else:
-            kwargs.update(security_groups=security_groups)
-            return self.conn.run_instances(image_id, **kwargs)
 
     def create_image(self, instance_id, name, description=None,
                      no_reboot=False):
@@ -1582,7 +1551,6 @@ class EasyVPC(EasyAWS):
         Returns data={}
         """
         data = {}
-
         subnet = self.conn.create_subnet(vpc_id=vpc_id, cidr_block=cidr_block)
         data["subnet"] = subnet
 
@@ -1591,26 +1559,22 @@ class EasyVPC(EasyAWS):
             data["route_table"] = rt
 
             if open_route_to_gateway:
-                self.route_subnet_to_gateway(subnet_id=subnet.id, gateway_id=gateway_id, route_table_id=rt.id)
-
+                self.conn.create_route(route_table_id=rt.id, destination_cidr_block="0.0.0.0/0",
+                                       gateway_id=gateway_id)
+                association_id = self.conn.associate_route_table(route_table_id=rt.id, subnet_id=subnet.id)
+                data["route_association_id"] = association_id
         return data
 
     def associate_gateway_with_vpc(self, vpc_id, internet_gateway_id=None):
         """
         Create an internet gateway and attach to the vpc.
         """
+        igw = None
         if internet_gateway_id is None:
             igw = self.conn.create_internet_gateway()
             internet_gateway_id = igw.id
         self.conn.attach_internet_gateway(internet_gateway_id=internet_gateway_id, vpc_id=vpc_id)
         return igw
-
-    def route_subnet_to_gateway(self, subnet_id, gateway_id, route_table_id):
-        """
-        Allow subnet to route to the internet gateway
-        """
-        self.conn.create_route(route_table_id=route_table_id, destination_cidr_block="0.0.0.0/0", gateway_id=gateway_id)
-        self.conn.associate_route_table(route_table_id=route_table_id, subnet_id=subnet_id)
 
     def delete_vpc(self, vpc_id, force=False):
         """

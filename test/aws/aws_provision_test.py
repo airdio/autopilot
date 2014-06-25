@@ -9,7 +9,6 @@ import simplejson
 import gevent
 import gevent.monkey
 from autopilot.common.apenv import ApEnv
-from autopilot.common.asyncpool import taskpool
 from autopilot.workflows.workflow_model import WorkflowModel
 from autopilot.workflows.tasks.task import TaskResult, TaskState
 from autopilot.inf.aws.awsinf import AwsInfProvisionResponseContext
@@ -41,7 +40,7 @@ class AwsProvisionTests(AWStest):
         response = AwsInfProvisionResponseContext({}, reservation=reservation)
         self.at(response.wait(timeout=2, interval=1))
 
-    def test_stack_init(self):
+    def test_init_cluster(self):
         a = self.get_aws_inf()
         spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
@@ -49,97 +48,95 @@ class AwsProvisionTests(AWStest):
         }
 
         try:
-            rc = a.init_stack(spec)
+            rc = a.init_cluster(spec)
             self.ae(len(rc.errors), 0, "errors found")
             self.at(len(rc.spec["vpc_id"]) > 0, "vpc_id")
             self.at(len(rc.spec["internet_gateway_id"]) > 0, "internet_gateway_id")
         finally:
-            self.delete_vpc(spec, delete_dependencies=True)
+            self.delete_vpc(spec)
 
-    def test_role_init(self):
+    def test_init_stack(self):
+        """
+        test stack initialization
+        """
         a = self.get_aws_inf()
         spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
         }
-
+        rc_stack = None
         try:
-            rcstack = a.init_stack(spec)
-            role_spec = {
+            rc_cluster = a.init_cluster(spec)
+            stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-                "vpc_id": rcstack.spec["vpc_id"],
-                "internet_gateway_id": rcstack.spec["internet_gateway_id"],
+                "vpc_id": rc_cluster.spec["vpc_id"],
+                "internet_gateway_id": rc_cluster.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
-                "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
-                              {"protocol": "tcp", "from": 3306, "to": 3306}],
+                "subnets": rc_cluster.spec["subnets"]
             }
-            rcrole = a.init_role(role_spec)
+            rc_stack = a.init_stack(stack_spec)
+            subnets = rc_stack.spec["subnets"]
+            first_subnet = subnets[0]
 
-            self.ae(len(rcrole.errors), 0, "errors found")
-            self.at(len(rcrole.spec["subnet_id"]) > 0, "subnet_id")
-            self.at(len(rcrole.spec["route_table_id"]) > 0, "route_table_id")
+            self.ae(0, len(rc_stack.errors), "errors found")
+            self.ae(1, len(subnets), "subnets")
+            self.at(first_subnet.get("subnet_id"))
+            self.at(first_subnet.get("route_table_id"))
+            self.at(first_subnet.get("route_association_id"))
         finally:
-            self.delete_vpc(rcrole.spec, delete_dependencies=True)
+            if rc_stack:
+                self.delete_vpc(rc_stack.spec)
 
     def test_instance_provision(self):
-        error = None
-        result = None
-
-        def _provision_instance_callback(rcinstances, exception=None):
-            if exception:
-                error = exception
-            else:
-                rcinstances.yield_until_instances_ready()
-                result = rcinstances
-
-        # pump provision instance through the gevent pool
-        taskpool.spawn(func=AwsProvisionTests._instance_provision,
-                       args={"aws_inf": self.get_aws_inf()},
-                       callback=_provision_instance_callback)
-
-        gevent.sleep(30)
-        print "done sleeping on main greenlet"
-
-        if error:
-            raise error
-        else:
-            if not result:
-                pass
-                # raise self.timedout()
-
-    @staticmethod
-    def _instance_provision(aws_inf):
-        stack_spec = {
+        """
+        Test instance provision
+        """
+        aws_inf = self.get_aws_inf()
+        cluster_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
         }
-
+        instances = None
+        rc_instances = None
         try:
-            rcstack = aws_inf.init_stack(stack_spec)
-            role_spec = {
+            rc_cluster = aws_inf.init_cluster(cluster_spec)
+            stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-                "vpc_id": rcstack.spec["vpc_id"],
-                "internet_gateway_id": rcstack.spec["internet_gateway_id"],
+                "vpc_id": rc_cluster.spec["vpc_id"],
+                "internet_gateway_id": rc_cluster.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
+                "subnets": rc_cluster.spec["subnets"]
             }
-            rcrole = aws_inf.init_role(role_spec)
+            rc_stack = aws_inf.init_stack(stack_spec)
+            subnets = rc_stack.spec["subnets"]
+            first_subnet = subnets[0]
 
-            instance_spec = {
+            role_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "image_id": "ami-a25415cb",
                 "instance_type": "m1.medium",
+                "key_pair_name": "aptest",
                 "instance_count": 2,
-                "subnet_id": rcrole.spec["subnet_id"],
-                "vpc_id": rcrole.spec["vpc_id"],
+                "vpc_id": rc_stack.spec["vpc_id"],
+                "subnet_id": first_subnet.get("subnet_id"),
+                "route_table_id": first_subnet.get("route_table_id"),
+                "route_association_id": first_subnet.get("route_association_id"),
                 "associate_public_ip": True,
                 "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
                               {"protocol": "tcp", "from": 3306, "to": 3306}],
             }
-            rcinstances = aws_inf.provision(instance_spec)
-            return rcinstances
+            rc_instances = aws_inf.provision_role(role_spec)
+            instances = rc_instances.spec["instances"]
+
+            self.at(rc_instances.spec["security_group_ids"])
+            self.ae(2, len(instances))
+            # self.at(len(self.ssh_command(host=instances[0].ip_address)) > 0)
         finally:
             pass
-                #self.delete_vpc(rcrole.spec, delete_dependencies=True)
+            if instances:
+                self.terminate_instances([instance.id for instance in instances])
+            #if rc_instances.spec:
+                #self.delete_vpc(rc_instances.spec)
 
 
 

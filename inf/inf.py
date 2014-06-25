@@ -35,26 +35,26 @@ class Inf(object):
     All functions should return InfResponseContext.
     """
 
-    def init_stack(self, stack_spec={}):
+    def init_cluster(self, stack_spec={}):
         """
-        Create a new service environment. An environment is an isolated topology like dev or staging or production
-        An environment is a within a domain
-        """
-        pass
-
-    def clean_stack(self, stack_spec={}, delete_dependencies=False):
-        """
-        Clean up the stack environment
+        Create a new cluster environment. An environment is an isolated topology like dev or staging or production
+        An environment is within a domain
         """
         pass
 
-    def init_role(self, role_spec={}):
+    def delete_cluster(self, stack_spec={}, delete_dependencies=False):
+        """
+        Clean up the cluster environment
+        """
+        pass
+
+    def init_stack(self, role_spec={}):
         """
         Initialize role environment
         """
         pass
 
-    def provision(self, role_spec={}, tags=[]):
+    def provision_role(self, role_spec={}, tags=[]):
         """
         Provision the role as per spec
         """
