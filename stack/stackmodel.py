@@ -1,14 +1,41 @@
 #! /usr/bin python
 
 from autopilot.workflows.workflowtype import WorkflowType
-from autopilot.clientcontext.stack import Stack
-from autopilot.clientcontext.role import Role
 from autopilot.inf.aws.awsinf import AWSInf
-from autopilot.vcs.vcs import Vcs
 
 
-class DeploymentContext(object):
-    """ Represents a deployment context
+class Vcs(object):
+    """
+    Defines interface to a version control system
+    """
+    def __init__(self, target, url):
+        self.target = target
+        self.url = url
+
+
+class Stack(object):
+    """ Represents a Stack object
+    """
+    def __init__(self, name, version, roles={}, vcs=None):
+        #roles dictionary
+        self.name = name
+        self.version = version
+        self.roles = roles
+        self.vcs = vcs
+
+
+class Role(object):
+    """ Represents a role
+    """
+    def __init__(self, name, version, instances=1):
+        self.name = name
+        self.version = version
+        self.instances = instances
+
+
+class StackModel(object):
+    """
+    Represents a Stack Model
     """
     def __init__(self, apenv, contextd, cloud_configd=None):
         """
@@ -34,7 +61,7 @@ class DeploymentContext(object):
         else:
             vcs = Vcs(vcsd.get("target"), vcsd.get("url"))
         return Stack(stackd["name"], stackd["version"],
-                           DeploymentContext._resolve_roles(stackd.get("roles", {})),
+                           StackModel._resolve_roles(stackd.get("roles", {})),
                            vcs)
 
     @staticmethod

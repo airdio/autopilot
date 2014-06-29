@@ -16,6 +16,13 @@ class AutopilotException(Exception):
     def explain(self):
         return "%s: %s" % (self.__class__.__name__, self.msg)
 
+class AutopilotWorkflowException(AutopilotException):
+    """
+    Base class for workflow related exceptions
+    """
+    def __init__(self, msg, wf_id):
+        AutopilotException.__init__(self, msg)
+        self.wf_id = wf_id
 
 class CommandNotFound(AutopilotException):
     """Raised when command is not found on the system's PATH """

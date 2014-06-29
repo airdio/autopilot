@@ -71,25 +71,25 @@ class AWSInf(Inf):
         self.vpc_conn = self._get_vpc()
         self.ec2_conn = self._get_ec2()
 
-    def init_cluster(self, cluster_spec={}):
+    def init_domain(self, domain_spec={}):
         """
         Create a private cluster environment based on the spec.
         At minimum this will create:
         1. VPC
         2. Internet gateway with internet routing enabled and attach to the VPC
         """
-        rc = AWSInfResponseContext(aws_inf=self, spec=cluster_spec)
+        rc = AWSInfResponseContext(aws_inf=self, spec=domain_spec)
         try:
             # create a vpc and a default internet gateway
-            data = self.vpc_conn.create_vpc(cidr_block=Dct.get(cluster_spec, "cidr", "10.0.0.0/16"))
-            cluster_spec["vpc_id"] = data["vpc"].id
-            cluster_spec["internet_gateway_id"] = data["internet_gateway"].id
-            cluster_spec["subnets"] = []
+            data = self.vpc_conn.create_vpc(cidr_block=Dct.get(domain_spec, "cidr", "10.0.0.0/16"))
+            domain_spec["vpc_id"] = data["vpc"].id
+            domain_spec["internet_gateway_id"] = data["internet_gateway"].id
+            domain_spec["subnets"] = []
         except Exception, e:
             rc.errors.extend(e)
 
         # return updated spec
-        rc.close(new_spec=cluster_spec)
+        rc.close(new_spec=domain_spec)
         return rc
 
     def init_stack(self, stack_spec={}):
@@ -120,11 +120,11 @@ class AWSInf(Inf):
         rc.close(new_spec=stack_spec)
         return rc
 
-    def delete_cluster(self, env_spec={}, delete_dependencies=False):
+    def delete_domain(self, domain_spec={}, delete_dependencies=False):
         """
         Delete the cluster
         """
-        self.vpc_conn.delete_vpc(vpc_id=Dct.get(env_spec, "vpc_id"), force=delete_dependencies)
+        self.vpc_conn.delete_vpc(vpc_id=Dct.get(domain_spec, "vpc_id"), force=delete_dependencies)
 
     def provision_role(self, role_spec={}, tags=[]):
         """

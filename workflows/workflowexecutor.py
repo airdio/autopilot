@@ -1,7 +1,9 @@
 #! /usr/bin/python
 
 from tornado import gen
-from autopilot.common.apenv import ApEnv
+from autopilot.common.utils import Dct
+from autopilot.common import exception
+from autopilot.workflows.tasks.group import Group, GroupSet
 from autopilot.workflows.tasks.task import TaskState
 
 
@@ -10,16 +12,22 @@ class WorkflowExecutor(object):
     Executes a given workflow
     and manages its life cycle
     """
-    def __init__(self, model):
+    def __init__(self, apenv, model, on_group_finished=None):
+        self.apenv = apenv
         self.model = model
-        self.executedGroups = []
+        self.executed_groups = []
         self.success = True
-        self.executed_once = False
+        self.executed = False
+        self.on_group_finished = on_group_finished
+        self.workflow_state = {}
+        self.inf = None
+        self.groupset = None
 
     def execute(self):
-        if self.executed_once:
-            raise Exception("Executing workflow twice")
-        self.executed_once = True
+        if self.executed:
+            raise Exception("Execution of a workflow is only allowed once")
+        self.executed = True
+        self._init()
         self._execute_groups()
 
     @gen.engine
@@ -28,16 +36,21 @@ class WorkflowExecutor(object):
         Groups are always executed in a serial fashion.
         Individual tasks within groups are executed in parallel
         """
-        groupset = self.model.groupset
+        groupset = self.groupset
         for group in groupset.groups:
             # track each group execution context so that we can rollback if needed
             # execution of tasks within the group is parallel
             ec = group.get_execution_context()
-            self.executedGroups.append(ec)
+            self.executed_groups.append(ec)
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
             yield gen.Task(ec.run)
+
+            # call on group finished callback handler
+            # so that the caller can handle new state created
+            if self.on_group_finished:
+                self.on_group_finished(group)
 
             if not self._check_group_success(group):
                 # if this group failed we will not execute the
@@ -52,7 +65,7 @@ class WorkflowExecutor(object):
         """
         Calls rollback on the executed groups in the reverse order
         """
-        for g in self.executedGroups[::-1]:
+        for g in self.executed_groups[::-1]:
             yield gen.Task(g.rewind)
 
     def all_tasks_succeeded(self):
@@ -69,3 +82,27 @@ class WorkflowExecutor(object):
 
     def _notify(self):
         pass
+
+    def _init(self):
+        if not self.model.get_resolver(self.model.wf_id):
+            raise exception.AutopilotWorkflowException("No task resolver for this workflow found")
+        # init inf
+        infresolver = self.apenv.get_inf_resolver(self.model.wf_id)
+        self.inf = infresolver.resolve(self.apenv, self.model)
+
+        # groupset
+        groups = []
+        for groupd in self.model.groupset:
+            groups.append(self._resolve_group(groupd))
+        self.groupset = GroupSet(groups)
+
+    def _resolve_group(self, groupd):
+        groupid = Dct.get(groupd, "groupid")
+        tasksd = Dct.get(groupd, "tasks")
+        tasks = []
+        resolver = self.apenv.get_resolver(self.model.wf_id)
+        for taskd in tasksd:
+            tasks.append(resolver.resolve(Dct.get(taskd, "name"), self.apenv, self.model.wf_id,
+                                          self.inf,
+                                          Dct.get(taskd, "properties")))
+        return Group(self.model.wf_id, self.apenv, groupid, tasks)

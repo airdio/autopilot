@@ -35,14 +35,14 @@ class Inf(object):
     All functions should return InfResponseContext.
     """
 
-    def init_cluster(self, stack_spec={}):
+    def init_domain(self, domain_spec={}):
         """
-        Create a new cluster environment. An environment is an isolated topology like dev or staging or production
-        An environment is within a domain
+        Creates a new domain, an isolated routable environment that is unique to an org
+        *.dev.marketing.com OR *.prod.marketing.com
         """
         pass
 
-    def delete_cluster(self, stack_spec={}, delete_dependencies=False):
+    def delete_domain(self, domain_spec={}, delete_dependencies=False):
         """
         Clean up the cluster environment
         """

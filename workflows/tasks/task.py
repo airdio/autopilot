@@ -44,17 +44,18 @@ class Task(object):
     """
     Base class for Tasks
     """
-    def __init__(self, apenv, name, wf_id, inf, properties):
+    def __init__(self, apenv, name, wf_id, inf, properties, workflow_state={}):
         self.apenv = apenv
         self.name = name
         self.inf = inf
         self.properties = properties
         self.result = None
         self.workflow = wf_id
-        self.result = TaskResult(self, self.workflow, TaskState.Initialized)
         self.finalcallback = None  # we do not have a callback yet
         self.starttime = None
         self.endtime = None
+        self.workflow_state = workflow_state
+        self.result = TaskResult(self, self.workflow, TaskState.Initialized)
 
     # don't override this. Override process_run
     def run(self, callback):

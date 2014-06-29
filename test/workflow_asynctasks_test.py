@@ -10,11 +10,8 @@ from autopilot.test.common.utils import Utils
 from autopilot.common.asyncpool import taskpool
 from autopilot.test.common import tasks
 from autopilot.test.common.tasks import FetchUrlTask
-from autopilot.common.apenv import ApEnv
 from autopilot.test.common.aptest import APtest
-from autopilot.workflows.workflow_model import WorkflowModel
-from autopilot.workflows.tasks.group import Group, GroupSet
-from autopilot.workflows.tasks.task import TaskResult, TaskState
+from autopilot.workflows.tasks.task import TaskState
 
 
 class WorkflowAsyncTaskTests(APtest):
@@ -23,8 +20,7 @@ class WorkflowAsyncTaskTests(APtest):
     """
     def test_async_workflow_tasks(self):
         #execute the model
-        model = self.get_default_model("fetch_url.wf")
-        ex = model.get_executor()
+        (model, ex) = self.get_default_model("fetch_url.wf")
         ex.execute()
 
         #wait for the tasks to finish
@@ -48,12 +44,8 @@ class WorkflowAsyncTaskTests(APtest):
         self.at((data3 - data1) >= 2, "time difference should be greater than or equal to 2")
 
     def test_async_exception(self):
-        model = self.get_default_model("async_exception.wf")
-        ex = model.get_executor()
-        ex.execute()
-
+        (model, ex) = self.get_default_model("async_exception.wf")
         taskpool.join(2)
-
         self.af(ex.success, "Execution should fail")
 
         tasks = model.groupset.groups[0].tasks

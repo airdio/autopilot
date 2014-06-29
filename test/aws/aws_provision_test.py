@@ -3,19 +3,16 @@
 import os
 import os.path
 import sys
-import time
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
-import simplejson
 import gevent
 import gevent.monkey
 from autopilot.common.apenv import ApEnv
-from autopilot.workflows.workflow_model import WorkflowModel
-from autopilot.workflows.tasks.task import TaskResult, TaskState
 from autopilot.inf.aws.awsinf import AwsInfProvisionResponseContext
+from autopilot.workflows.workflowexecutor import WorkflowExecutor
+from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.test.common.utils import Utils
-from autopilot.test.common import tasks
-from autopilot.test.common.tasks import FetchUrlTask
 from autopilot.test.aws.awstest import AWStest
+
 
 # monkey patch
 gevent.monkey.patch_all()
@@ -40,7 +37,7 @@ class AwsProvisionTests(AWStest):
         response = AwsInfProvisionResponseContext({}, reservation=reservation)
         self.at(response.wait(timeout=2, interval=1))
 
-    def test_init_cluster(self):
+    def test_init_domain(self):
         a = self.get_aws_inf()
         spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
@@ -48,7 +45,7 @@ class AwsProvisionTests(AWStest):
         }
 
         try:
-            rc = a.init_cluster(spec)
+            rc = a.init_domain(spec)
             self.ae(len(rc.errors), 0, "errors found")
             self.at(len(rc.spec["vpc_id"]) > 0, "vpc_id")
             self.at(len(rc.spec["internet_gateway_id"]) > 0, "internet_gateway_id")
@@ -66,13 +63,13 @@ class AwsProvisionTests(AWStest):
         }
         rc_stack = None
         try:
-            rc_cluster = a.init_cluster(spec)
+            rc_domain = a.init_domain(spec)
             stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-                "vpc_id": rc_cluster.spec["vpc_id"],
-                "internet_gateway_id": rc_cluster.spec["internet_gateway_id"],
+                "vpc_id": rc_domain.spec["vpc_id"],
+                "internet_gateway_id": rc_domain.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
-                "subnets": rc_cluster.spec["subnets"]
+                "subnets": rc_domain.spec["subnets"]
             }
             rc_stack = a.init_stack(stack_spec)
             subnets = rc_stack.spec["subnets"]
@@ -92,20 +89,20 @@ class AwsProvisionTests(AWStest):
         Test instance provision
         """
         aws_inf = self.get_aws_inf()
-        cluster_spec = {
+        domain_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
         }
         instances = None
         rc_instances = None
         try:
-            rc_cluster = aws_inf.init_cluster(cluster_spec)
+            rc_domain = aws_inf.init_domain(domain_spec)
             stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-                "vpc_id": rc_cluster.spec["vpc_id"],
-                "internet_gateway_id": rc_cluster.spec["internet_gateway_id"],
+                "vpc_id": rc_domain.spec["vpc_id"],
+                "internet_gateway_id": rc_domain.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
-                "subnets": rc_cluster.spec["subnets"]
+                "subnets": rc_domain.spec["subnets"]
             }
             rc_stack = aws_inf.init_stack(stack_spec)
             subnets = rc_stack.spec["subnets"]
@@ -137,6 +134,21 @@ class AwsProvisionTests(AWStest):
                 self.terminate_instances([instance.id for instance in instances])
             #if rc_instances.spec:
                 #self.delete_vpc(rc_instances.spec)
+
+    def test_touchfile(self):
+        model = self.get_default_model("stack_deploy1.yml")
+        self._remove_files_if_exists(model)
+        ex = WorkflowExecutor(model=model)
+        try:
+            ex.execute()
+            self.ae(True, ex.success)
+            for group in model.groupset.groups:
+                for task in group.tasks:
+                    self.ae(TaskState.Done, task.result.state, "task should be in Done state")
+                    fp = task.properties["file_path"]
+                    self.at(os.path.isfile(fp))
+        finally:
+            self._remove_files_if_exists(model)
 
 
 
