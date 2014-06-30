@@ -13,7 +13,7 @@ class InfResolver(object):
         target = Dct.get(model.inf, "target")
         properties = Dct.get(model.inf, "properties")
         func = getattr(InfResolver, "_get_{0}".format(target))
-        return func(apenv, properties)
+        return func(self, apenv, properties)
 
     def _get_aws(self, apenv, properties):
         return AWSInf(Dct.get(properties, "aws_access_key_id"),

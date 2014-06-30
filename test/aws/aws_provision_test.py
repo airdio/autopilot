@@ -8,6 +8,7 @@ import gevent
 import gevent.monkey
 from autopilot.common.apenv import ApEnv
 from autopilot.inf.aws.awsinf import AwsInfProvisionResponseContext
+from autopilot.workflows.tasks.task import TaskState
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
 from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.test.common.utils import Utils
@@ -135,20 +136,22 @@ class AwsProvisionTests(AWStest):
             #if rc_instances.spec:
                 #self.delete_vpc(rc_instances.spec)
 
-    def test_touchfile(self):
+    def test_deploy_role(self):
         model = self.get_default_model("stack_deploy1.yml")
-        self._remove_files_if_exists(model)
         ex = WorkflowExecutor(model=model)
+        instances = None
         try:
             ex.execute()
             self.ae(True, ex.success)
             for group in model.groupset.groups:
                 for task in group.tasks:
                     self.ae(TaskState.Done, task.result.state, "task should be in Done state")
-                    fp = task.properties["file_path"]
-                    self.at(os.path.isfile(fp))
+            rc_instances = {}
+            self.at(rc_instances.spec["security_group_ids"])
+            self.ae(2, len(instances))
         finally:
-            self._remove_files_if_exists(model)
+            if instances:
+                self.terminate_instances([instance.id for instance in instances])
 
 
 

@@ -9,7 +9,7 @@ import simplejson
 from autopilot.test.common.utils import Utils
 from autopilot.common.asyncpool import taskpool
 from autopilot.test.common import tasks
-from autopilot.test.common.tasks import FetchUrlTask
+from autopilot.test.common.tasks import FetchUrlTask, AsyncExceptionTask
 from autopilot.test.common.aptest import APtest
 from autopilot.workflows.tasks.task import TaskState
 
@@ -24,12 +24,12 @@ class WorkflowAsyncTaskTests(APtest):
         ex.execute()
 
         #wait for the tasks to finish
-        taskpool.sleep(5)
+        taskpool.doyield(5)
 
         self.at(ex.success, "Execution should not fail")
 
         #get response from the tasks
-        tasks = model.groupset.groups[0].tasks
+        tasks = ex.groupset.groups[0].tasks
         filename1 = tasks[0].result.result_data["filename"]
         filename2 = tasks[0].result.result_data["filename"]
 
@@ -38,25 +38,26 @@ class WorkflowAsyncTaskTests(APtest):
         data2 = float(Utils.read_file(filename2)[0])
         self.at((data2 - data1) < 2, "time difference should be less than 2")
 
-        fulltasks = model.groupset.groups[1].tasks
+        fulltasks = ex.groupset.groups[1].tasks
         filename3 = fulltasks[0].result.result_data["filename"]
         data3 = float(Utils.read_file(filename3)[0])
         self.at((data3 - data1) >= 2, "time difference should be greater than or equal to 2")
 
     def test_async_exception(self):
         (model, ex) = self.get_default_model("async_exception.wf")
+        ex.execute()
         taskpool.join(2)
         self.af(ex.success, "Execution should fail")
 
-        tasks = model.groupset.groups[0].tasks
+        tasks = ex.groupset.groups[0].tasks
         self.ae(TaskState.Error, tasks[0].result.state)
         self.ae(1, len(tasks[0].result.exceptions))
 
-    def create_FetchUrl(self, apenv, inf, wf_id, properties):
-        return FetchUrlTask("FetchUrlTask", apenv, wf_id, inf, properties)
+    def get_FetchUrl(self, apenv, inf, wf_id, properties, workflow_state):
+        return FetchUrlTask("FetchUrlTask", apenv, wf_id, inf, properties, workflow_state)
 
-    def create_FetchUrl2(self, apenv, inf, wf_id, properties):
-        return FetchUrlTask("FetchUrlTask2", apenv, wf_id, inf, properties)
+    def get_FetchUrl2(self, apenv, inf, wf_id, properties, workflow_state):
+        return FetchUrlTask("FetchUrlTask2", apenv, wf_id, inf, properties, workflow_state)
 
-    def create_AsyncException(self, apenv, inf, wf_id, properties):
-        return tasks.AsyncExceptionTask("AsyncException", apenv, inf, wf_id, properties)
+    def get_AsyncException(self, apenv, inf, wf_id, properties, workflow_state):
+        return AsyncExceptionTask("AsyncException", apenv, inf, wf_id, properties, workflow_state)

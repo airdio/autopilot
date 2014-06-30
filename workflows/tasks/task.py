@@ -44,7 +44,7 @@ class Task(object):
     """
     Base class for Tasks
     """
-    def __init__(self, apenv, name, wf_id, inf, properties, workflow_state={}):
+    def __init__(self, apenv, name, wf_id, inf, properties, workflow_state):
         self.apenv = apenv
         self.name = name
         self.inf = inf
@@ -97,9 +97,10 @@ class Task(object):
         raise Exception("should not be called. Derived class should implement this")
 
     def _on_run_callback(self, final_state, messages=[], exceptions=[]):
+        # print "final state {0}".format(final_state)
         self.result.update(final_state, messages, exceptions)
         self._finalize()
-        # call the original callback
+        # original callback
         self.finalcallback(self)
 
     def _on_rollback_callback(self, final_state, messages=[], exceptions=[]):
@@ -119,8 +120,8 @@ class Task(object):
 
 
 class AsyncTask(Task):
-    def __init__(self, apenv, name, wf_id, inf, properties):
-        Task.__init__(self, apenv, name, wf_id, inf, properties)
+    def __init__(self, apenv, name, wf_id, inf, properties, workflow_state):
+        Task.__init__(self, apenv, name, wf_id, inf, properties, workflow_state)
         self.asyncfinalcb = None
 
     def on_run(self, callback):

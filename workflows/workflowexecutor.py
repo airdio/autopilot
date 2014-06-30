@@ -12,14 +12,14 @@ class WorkflowExecutor(object):
     Executes a given workflow
     and manages its life cycle
     """
-    def __init__(self, apenv, model, on_group_finished=None):
+    def __init__(self, apenv, model, workflow_state={}, on_group_finished=None):
         self.apenv = apenv
         self.model = model
         self.executed_groups = []
         self.success = True
         self.executed = False
         self.on_group_finished = on_group_finished
-        self.workflow_state = {}
+        self.workflow_state = workflow_state
         self.inf = None
         self.groupset = None
 
@@ -84,8 +84,6 @@ class WorkflowExecutor(object):
         pass
 
     def _init(self):
-        if not self.model.get_resolver(self.model.wf_id):
-            raise exception.AutopilotWorkflowException("No task resolver for this workflow found")
         # init inf
         infresolver = self.apenv.get_inf_resolver(self.model.wf_id)
         self.inf = infresolver.resolve(self.apenv, self.model)
@@ -100,9 +98,8 @@ class WorkflowExecutor(object):
         groupid = Dct.get(groupd, "groupid")
         tasksd = Dct.get(groupd, "tasks")
         tasks = []
-        resolver = self.apenv.get_resolver(self.model.wf_id)
+        task_resolver = self.apenv.get_task_resolver(self.model.wf_id)
         for taskd in tasksd:
-            tasks.append(resolver.resolve(Dct.get(taskd, "name"), self.apenv, self.model.wf_id,
-                                          self.inf,
-                                          Dct.get(taskd, "properties")))
+            tasks.append(task_resolver.resolve(Dct.get(taskd, "name"), self.apenv, self.model.wf_id,
+                                               self.inf, Dct.get(taskd, "properties"), self.workflow_state))
         return Group(self.model.wf_id, self.apenv, groupid, tasks)

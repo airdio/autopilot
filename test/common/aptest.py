@@ -23,6 +23,7 @@ class APtest(unittest.TestCase):
 
     def get_default_model(self, workflow_file, wf_id="wf_id1"):
         apenv = ApEnv()
+        apenv.add(wf_id, {})
         apenv.add_task_resolver(wf_id, TaskResolver(self))
         apenv.add_inf_resolver(wf_id, InfResolver())
         model = WorkflowModel.load(self.openf(workflow_file))

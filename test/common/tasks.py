@@ -11,8 +11,8 @@ from autopilot.common.asyncpool import taskpool
 
 class FetchUrlTask(AsyncTask):
 
-    def __init__(self, taskname, apenv, wf_id, inf, properties):
-        Task.__init__(self, apenv, taskname, wf_id, inf, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties, workflow_state):
+        Task.__init__(self, apenv, taskname, wf_id, inf, properties, workflow_state)
         self.url = Dct.get(properties, "fetch_url", "www.google.com")
 
     def on_async_run(self):
@@ -24,7 +24,7 @@ class FetchUrlTask(AsyncTask):
             f.write(str(self.starttime))
             self.result.result_data["filename"] = f.name
 
-        taskpool.sleep(2)
+        taskpool.doyield(2)
         return TaskState.Done, [], []
 
     def on_async_rollback(self):
@@ -34,8 +34,8 @@ class FetchUrlTask(AsyncTask):
 
 class TouchfileTask(Task):
 
-    def __init__(self, taskname, apenv, wf_id, inf, properties):
-        Task.__init__(self, apenv, taskname, wf_id, inf, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties, workflow_state):
+        Task.__init__(self, apenv, taskname, wf_id, inf, properties, workflow_state)
         self.file_name = self.properties["file_path"]
 
     def on_run(self, callback):
@@ -54,16 +54,16 @@ class TouchfileTask(Task):
 
 class TouchfileFailTask(TouchfileTask):
 
-    def __init__(self, taskname, apenv, wf_id, inf, properties):
-        TouchfileTask.__init__(self, taskname, apenv, wf_id, inf, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties, workflow_state):
+        TouchfileTask.__init__(self, taskname, apenv, wf_id, inf, properties, workflow_state)
 
     def on_run(self, callback):
         callback(TaskState.Error, ["Task {0} error".format(self.name)], [])
 
 
 class AsyncExceptionTask(AsyncTask):
-    def __init__(self, taskname, apenv, wf_id, inf, properties):
-        Task.__init__(self, apenv, taskname, wf_id, inf, properties)
+    def __init__(self, taskname, apenv, wf_id, inf, properties, workflow_state):
+        AsyncTask.__init__(self, apenv, taskname, wf_id, inf, properties, workflow_state)
 
     def on_async_run(self):
         return TaskState.Error, [], [Exception("Exception from AsyncExceptionTask")]
