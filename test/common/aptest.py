@@ -31,4 +31,4 @@ class APtest(unittest.TestCase):
         return model, ex
 
     def openf(self, path):
-        return open(os.path.join("resources", path))
+        return open(os.path.join(os.environ["AUTOPILOT_HOME"], "test/resources", path))

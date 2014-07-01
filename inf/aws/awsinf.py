@@ -92,26 +92,26 @@ class AWSInf(Inf):
         rc.close(new_spec=domain_spec)
         return rc
 
-    def init_stack(self, stack_spec={}):
+    def init_stack(self, domain_spec, stack_spec={}):
         """
         We need a VPC in the role_spec that we can use
         Create a subnet for the role with route tables and security groups
         """
         rc = AWSInfResponseContext(aws_inf=self, spec=stack_spec)
-        if not Dct.contains_key(stack_spec, "vpc_id"):
-            raise awsexception.VPCDoesNotExists()
+        vpc_id =Dct.get(domain_spec, "vpc_id")
+        internet_gateway_id = Dct.get(domain_spec, "internet_gateway_id")
 
         try:
-            subnets = Dct.get(stack_spec, "subnets")
 
+            stack_spec["subnets"] = []
             # create a subnet for this within the vpc
-            data = self.vpc_conn.create_subnet(vpc_id=stack_spec["vpc_id"], cidr_block=Dct.get(stack_spec, "cidr", "10.0.0.0/24"),
-                                               new_route_table=True, gateway_id=stack_spec["internet_gateway_id"],
+            data = self.vpc_conn.create_subnet(vpc_id=vpc_id, cidr_block=Dct.get(stack_spec, "cidr", "10.0.0.0/24"),
+                                               new_route_table=True, gateway_id=internet_gateway_id,
                                                open_route_to_gateway=True)
             new_subnet = {"subnet_id":  data["subnet"].id, "route_table_id": data["route_table"].id,
                           "route_association_id": data["route_association_id"]}
 
-            subnets.append(new_subnet)
+            stack_spec["subnets"].append(new_subnet)
 
         except Exception, e:
             rc.errors.extend(e)
@@ -126,7 +126,7 @@ class AWSInf(Inf):
         """
         self.vpc_conn.delete_vpc(vpc_id=Dct.get(domain_spec, "vpc_id"), force=delete_dependencies)
 
-    def provision_role(self, role_spec={}, tags=[]):
+    def provision_role(self, domain_spec, stack_spec, role_spec={}, tags=[]):
         """
         We need a subnet in the the instance_spec
         1. Create default security group with inbound traffic for:
@@ -137,20 +137,22 @@ class AWSInf(Inf):
         """
 
         # required parameters
+        vpc_id = Dct.get(domain_spec, "vpc_id")
+        subnet_id = Dct.get(stack_spec["subnets"][0], "subnet_id")
+
         uname = Dct.get(role_spec, "uname")
         image_id = Dct.get(role_spec, "image_id")
         instance_type = Dct.get(role_spec, "instance_type")
         key_pair_name = Dct.get(role_spec, "key_pair_name")
-        vpc_id = Dct.get(role_spec, "vpc_id")
-        subnet_id = Dct.get(role_spec, "subnet_id")
         instance_count = Dct.get(role_spec, "instance_count")
         associate_public_ip = Dct.get(role_spec, "associate_public_ip", False)
+        auth_spec = Dct.get(role_spec, "auth_spec")
 
         # create a security group
         sg = self.ec2_conn.create_group("sg_{0}".format(uname),
                                         description="security group for {0}".format(uname),
                                         auth_ssh=True, vpc_id=vpc_id,
-                                        auth_spec=Dct.get(role_spec, "auth_spec"))
+                                        auth_spec=auth_spec)
 
         role_spec["security_group_ids"] = [sg.id]
 
@@ -163,7 +165,7 @@ class AWSInf(Inf):
                                                       subnet_id=subnet_id,
                                                       associate_public_ip=associate_public_ip)
 
-        role_spec["instances"] = reservation.instances
+        role_spec["reservation"] = reservation
 
         # create a response context
         rc = AwsInfProvisionResponseContext(aws_inf=self, spec=role_spec, reservation=reservation)

@@ -48,13 +48,13 @@ class Inf(object):
         """
         pass
 
-    def init_stack(self, role_spec={}):
+    def init_stack(self, domain_spec, stack_spec={}):
         """
         Initialize role environment
         """
         pass
 
-    def provision_role(self, role_spec={}, tags=[]):
+    def provision_role(self, domain_spec, stack_spec, role_spec={}, tags=[]):
         """
         Provision the role as per spec
         """
