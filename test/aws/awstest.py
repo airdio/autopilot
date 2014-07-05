@@ -71,7 +71,7 @@ class AWStest(APtest):
         while attempt < max_tries:
             attempt += 1
             if not self.all_instances_in_state(instances=instances, state=state):
-                taskpool.doyield(time_in_seconds=interval)
+                taskpool.doyield(seconds=interval)
             else:
                 return True
         return False

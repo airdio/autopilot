@@ -25,7 +25,7 @@ import time
 import base64
 import string
 import tempfile
-import gevent
+from autopilot.common.asyncpool import taskpool
 
 import boto
 import boto.exception
@@ -270,11 +270,20 @@ class EasyEC2(EasyAWS):
         will allow all traffic between instances in the same security
         group
         """
-        log.info("awsutils", "Creating security group %s..." % name)
+        sg = self.get_group_or_none(name=name, vpc_id=vpc_id)
+        if sg:
+            log.warning("awsutils", "Security group:{0} already found. will skip creating".format(name))
+            return sg
+
+        log.info("awsutils", "Creating and authorizing security group {0}".format(name))
         sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
+
+        # wait until we get the security group registered
         while not self.get_group_or_none(name):
-            log.info("awsutils", "Waiting for security group %s..." % name)
-            gevent.sleep(5)
+            # yield until we know the group is created
+            print("Security group not found. Yielding: at {0}".format(utils.get_utc_now_seconds()))
+            taskpool.doyield(seconds=10)
+
         if auth_ssh:
             ssh_port = static.DEFAULT_SSH_PORT
             self.conn.authorize_security_group(group_id=sg.id,
@@ -316,7 +325,7 @@ class EasyEC2(EasyAWS):
                 to_port=65535)
         return sg
 
-    def get_all_security_groups(self, groupnames=[]):
+    def get_all_security_groups(self, groupnames=[], ):
         """
         Returns all security groups
 
@@ -327,12 +336,12 @@ class EasyEC2(EasyAWS):
             filters = {'group-name': groupnames}
         return self.get_security_groups(filters=filters)
 
-    def get_group_or_none(self, name):
+    def get_group_or_none(self, name, vpc_id=None):
         """
         Returns group with name if it exists otherwise returns None
         """
         try:
-            return self.get_security_group(name)
+            return self.get_security_group(name, vpc_id=None)
         except exception.SecurityGroupDoesNotExist:
             pass
 
@@ -353,10 +362,13 @@ class EasyEC2(EasyAWS):
                                    vpc_id=vpc_id)
         return sg
 
-    def get_security_group(self, groupname):
+    def get_security_group(self, groupname, vpc_id=None):
         try:
-            return self.get_security_groups(
-                filters={'group-name': groupname})[0]
+            filters = {"group-name": groupname}
+            if vpc_id:
+                filters.update({"vpc-id": vpc_id})
+
+            return self.get_security_groups(filters=filters)[0]
         except boto.exception.EC2ResponseError as e:
             if e.error_code == "InvalidGroup.NotFound":
                 raise exception.SecurityGroupDoesNotExist(groupname)
@@ -1535,7 +1547,10 @@ class EasyVPC(EasyAWS):
         Create a new VPC and an internet gateway and associate the gateway with the VPC
         """
         data = {}
+        # create vpc and configure the VPC to support DNS resolution and hostname assignment
         vpc = self.conn.create_vpc(cidr_block=cidr_block)
+        self.conn.modify_vpc_attribute(vpc.id, enable_dns_support=True)
+        self.conn.modify_vpc_attribute(vpc.id, enable_dns_hostnames=True)
         data["vpc"] = vpc
 
         if new_internet_gateway:

@@ -4,6 +4,7 @@ import os
 import unittest
 import simplejson
 from autopilot.common.apenv import ApEnv
+from autopilot.common.asyncpool import taskpool
 from autopilot.inf.inrfresolver import InfResolver
 from autopilot.workflows.tasks.taskresolver import TaskResolver
 from autopilot.workflows.workflowmodel import WorkflowModel
@@ -29,6 +30,12 @@ class APtest(unittest.TestCase):
         model = WorkflowModel.load(self.openf(workflow_file))
         ex = WorkflowExecutor(apenv, model=model)
         return model, ex
+
+    def execute_workflow(self, executor, timeout=10):
+        wait_event = taskpool.new_event()
+        executor.execute(wait_event=wait_event)
+        print "Waiting for event to signal"
+        wait_event.wait(timeout=timeout)
 
     def openf(self, path):
         return open(os.path.join(os.environ["AUTOPILOT_HOME"], "test/resources", path))

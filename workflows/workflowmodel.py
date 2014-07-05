@@ -22,11 +22,11 @@ class WorkflowModel(object):
         Loads a serialized workflow model
         """
         modeld = simplejson.load(mstream)
-        return WorkflowModel(Dct.get(modeld, "wf_id"),
-                             Dct.get(modeld, "type"),
-                             Dct.get(modeld, "target"),
-                             Dct.get(modeld, "domain"),
-                             Dct.get(modeld, "inf"),
-                             Dct.get(modeld, "taskgroups"))
+        return WorkflowModel(modeld.get("wf_id"),
+                             modeld.get("type"),
+                             modeld.get("target"),
+                             modeld.get("domain", None),
+                             modeld.get("inf", None),
+                             modeld.get("taskgroups"))
 
 

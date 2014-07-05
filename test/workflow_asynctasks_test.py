@@ -5,11 +5,8 @@ import os.path
 import sys
 import time
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
-import simplejson
 from autopilot.test.common.utils import Utils
-from autopilot.common.asyncpool import taskpool
-from autopilot.test.common import tasks
-from autopilot.test.common.tasks import FetchUrlTask, AsyncExceptionTask
+from autopilot.test.common.tasks import FetchUrlTask, AsyncExceptionTask, SleepTask
 from autopilot.test.common.aptest import APtest
 from autopilot.workflows.tasks.task import TaskState
 
@@ -21,10 +18,7 @@ class WorkflowAsyncTaskTests(APtest):
     def test_async_workflow_tasks(self):
         #execute the model
         (model, ex) = self.get_default_model("fetch_url.wf")
-        ex.execute()
-
-        #wait for the tasks to finish
-        taskpool.doyield(5)
+        self.execute_workflow(ex)
 
         self.at(ex.success, "Execution should not fail")
 
@@ -45,13 +39,15 @@ class WorkflowAsyncTaskTests(APtest):
 
     def test_async_exception(self):
         (model, ex) = self.get_default_model("async_exception.wf")
-        ex.execute()
-        taskpool.join(2)
+        self.execute_workflow(ex)
         self.af(ex.success, "Execution should fail")
 
         tasks = ex.groupset.groups[0].tasks
         self.ae(TaskState.Error, tasks[0].result.state)
         self.ae(1, len(tasks[0].result.exceptions))
+
+    def get_SleepTask(self, apenv, inf, wf_id, properties, workflow_state):
+        return SleepTask("SleepTask", apenv, wf_id, inf, properties, workflow_state)
 
     def get_FetchUrl(self, apenv, inf, wf_id, properties, workflow_state):
         return FetchUrlTask("FetchUrlTask", apenv, wf_id, inf, properties, workflow_state)

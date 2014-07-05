@@ -35,6 +35,10 @@
                 "version": "2.0",
                 "fetch_url": "http://www.github.com"
             }
+        },
+        {
+            "name": "SleepTask",
+            "properties": {}
         }]
     },
     {

@@ -34,7 +34,6 @@ class AWSDeployRole(Task):
         role_spec["key_pair_name"] = self.properties["key_pair_name"]
         rc_role = self.inf.provision_role(domain_spec=domain_spec, stack_spec=stack_spec, role_spec=role_spec)
 
-        self.workflow_state["roles"] = {}
         self.workflow_state["roles"][rolename] = {}
         self.workflow_state["roles"][rolename]["spec"] = rc_role.spec
         callback(TaskState.Done, ["Task {0} done".format(self.name)], [])

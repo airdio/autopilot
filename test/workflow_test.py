@@ -22,7 +22,7 @@ class WorkflowTests(APtest):
         (model, ex) = self.get_default_model("testwf1.wf")
         self._remove_files_if_exists(model)
         try:
-            ex.execute()
+            self.execute_workflow(ex)
             self.ae(2, len(ex.groupset.groups))
             self.ae("canary", ex.groupset.groups[0].groupid)
             self.ae("full", ex.groupset.groups[1].groupid)
@@ -33,13 +33,12 @@ class WorkflowTests(APtest):
             self.ae("Touchfile3", ex.groupset.groups[1].tasks[0].name)
         finally:
             self._remove_files_if_exists(model)
-            
 
     def test_touchfile(self):
         (model, ex) = self.get_default_model("testwf1.wf")
         self._remove_files_if_exists(model)
         try:
-            ex.execute()
+            self.execute_workflow(ex)
             self.ae(True, ex.success)
             for group in ex.groupset.groups:
                 for task in group.tasks:
@@ -53,7 +52,7 @@ class WorkflowTests(APtest):
         (model, ex) = self.get_default_model("testwf_serial_fail.wf")
         self._remove_files_if_exists(model)
         try:
-            ex.execute()
+            self.execute_workflow(ex)
             self.ae(False, ex.success)
             self.ae(1, len(ex.executed_groups))
             ex.rollback()

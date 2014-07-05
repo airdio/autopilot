@@ -1,7 +1,6 @@
 #! /usr/bin python
 
 from autopilot.common import utils
-from autopilot.common.asyncpool import taskpool
 
 
 class TaskState(object):
@@ -97,7 +96,7 @@ class Task(object):
         raise Exception("should not be called. Derived class should implement this")
 
     def _on_run_callback(self, final_state, messages=[], exceptions=[]):
-        # print "final state {0}".format(final_state)
+        print "Task {0} done. Final state {1}".format(self.name, final_state)
         self.result.update(final_state, messages, exceptions)
         self._finalize()
         # original callback
@@ -117,35 +116,3 @@ class Task(object):
         """
         self.endtime = utils.get_utc_now_seconds()
         pass
-
-
-class AsyncTask(Task):
-    def __init__(self, apenv, name, wf_id, inf, properties, workflow_state):
-        Task.__init__(self, apenv, name, wf_id, inf, properties, workflow_state)
-        self.asyncfinalcb = None
-
-    def on_run(self, callback):
-        self.asyncfinalcb = callback
-        taskpool.spawn(func=self.on_async_run, callback=self._localasync_callback)
-
-    # override in derived class
-    def on_async_run(self):
-        # todo make NotImplementedException
-        raise Exception("should not be called")
-
-    def on_rollback(self, callback):
-        taskpool.spawn(func=self.on_async_rollback)
-
-    # override in derived rollback
-    def on_async_rollback(self):
-        # todo make NotImplementedException
-        raise Exception("should not be called")
-
-    def _localasync_callback(self, result, exception):
-        if exception is not None:
-            self.asyncfinalcb(TaskState.Error, [], [exception])
-        else:
-            # todo check if result is None
-            # fail if it is. Don'tjust assert
-            # since we can load external tasks
-            self.asyncfinalcb(result[0], result[1], result[2])

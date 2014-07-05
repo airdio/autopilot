@@ -6,7 +6,6 @@ from autopilot.common import exception
 from autopilot.workflows.tasks.group import Group, GroupSet
 from autopilot.workflows.tasks.task import TaskState
 
-
 class WorkflowExecutor(object):
     """
     Executes a given workflow
@@ -23,18 +22,19 @@ class WorkflowExecutor(object):
         self.inf = None
         self.groupset = None
 
-    def execute(self):
+    def execute(self, wait_event=None):
         if self.executed:
             raise Exception("Execution of a workflow is only allowed once")
         self.executed = True
         self._init()
-        self._execute_groups()
+        self._execute_groups(wait_event=wait_event)
+
 
     @gen.engine
-    def _execute_groups(self):
+    def _execute_groups(self, wait_event=None):
         """
         Groups are always executed in a serial fashion.
-        Individual tasks within groups are executed in parallel
+        Individual tasks within groups maybe executed in parallel
         """
         groupset = self.groupset
         for group in groupset.groups:
@@ -59,6 +59,13 @@ class WorkflowExecutor(object):
                 # rollback of needed
                 self.success = False
                 break
+
+            print "group done:{0}".format(group.groupid)
+
+        # if we have a wait event then signal it
+        if wait_event:
+            print "Calling wait event"
+            wait_event.set()
 
     @gen.engine
     def rollback(self):

@@ -1,8 +1,10 @@
 #! /usr/bin/python
 
 import gevent
+import gevent.event
 from gevent import pool
 from gevent import monkey
+
 monkey.patch_all()
 
 
@@ -14,6 +16,9 @@ class GeventPool(object):
         self.capacity = size
         self.pool = pool.Pool(self.capacity)
 
+    def new_event(self):
+        return gevent.event.Event()
+
     def spawn(self, func, args={}, callback=None, delay=0):
         """
         Schedule func in the gevent pool. callback() once func returns
@@ -21,8 +26,8 @@ class GeventPool(object):
         sp = GeventPool.SpawnContext(gpool=self.pool, func=func, args=args, finalcb=callback, delay=delay)
         return sp.spawn()
 
-    def doyield(self, time_in_seconds=0):
-        gevent.sleep(seconds=time_in_seconds)
+    def doyield(self, seconds=0):
+        gevent.sleep(seconds=seconds)
 
     def join(self, timeout=None):
         self.pool.join(timeout)
@@ -65,4 +70,4 @@ class GeventPool(object):
                     self.finalcb(None, e)
 
 # todo: size should come from settings
-taskpool = GeventPool(10)
+taskpool = GeventPool(100)

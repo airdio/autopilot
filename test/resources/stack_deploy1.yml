@@ -41,13 +41,36 @@
                 "domain": "dev.marketing.myfoo.com",
                 "role": "mysql.dev.marketing.myfoo.com",
                 "version": "1.0",
-                "instance_count": 2,
+                "instance_count": 1,
                 "instance_type": "m3.medium",
                 "image_id":"ami-a25415cb",
                 "key_pair_name": "ocg-test",
                 "repository": {
                     "type": "git",
-                    "url": "https://www.github.com/myfoo",
+                    "url": "https://www.github.com/myfoo/mysql",
+                    "branch": "master",
+                    "revision": "9ccf"
+                },
+                "network": {
+                    "ports": [3306],
+                    "public_ip": true
+                }
+            }
+        },
+        {
+            "name": "AWSDeployRole",
+            "properties": {
+                "stack": "aptest",
+                "domain": "dev.marketing.myfoo.com",
+                "role": "mongodb.dev.marketing.myfoo.com",
+                "version": "1.0",
+                "instance_count": 1,
+                "instance_type": "m3.medium",
+                "image_id":"ami-a25415cb",
+                "key_pair_name": "ocg-test",
+                "repository": {
+                    "type": "git",
+                    "url": "https://www.github.com/myfoo/mongodb",
                     "branch": "master",
                     "revision": "9ccf"
                 },

@@ -1,6 +1,6 @@
 #! /usr/bin/python
 from tornado import gen
-from autopilot.workflows.tasks.task import Task, TaskResult, TaskState
+from autopilot.common.asyncpool import taskpool
 
 
 class Group(object):
@@ -37,9 +37,14 @@ class GroupExecutionContext(object):
         self.rolledback = False
 
     def run(self, callback):
+        """
+        Schedule all tasks in this group to run in parallel
+        """
         self.finalcallback = callback
         for task in self.tasks:
-            task.run(self._task_callback)
+            # schedule both the tasks to execute
+            print("Spawning task:{0}".format(task.name))
+            taskpool.spawn(task.run, args=dict(callback=self._task_callback))
 
     def _task_callback(self, task):
         self.tasksdone += 1

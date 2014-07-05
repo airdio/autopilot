@@ -150,12 +150,11 @@ class AwsProvisionTests(AWStest):
                   "stack": {
                       "spec": {}
                   },
-                  "roles": {
-                  },
+                  "roles": {},
         }
         instances = None
         try:
-            ex.execute()
+            self.execute_workflow(ex, timeout=240)
             # self.ae(True, ex.success)
             # for group in model.groupset.groups:
             #     for task in group.tasks:
