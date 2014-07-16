@@ -22,13 +22,27 @@ class APtest(unittest.TestCase):
     def af(self, expr, msg=None):
         self.assertFalse(expr, msg)
 
-    def get_default_model(self, workflow_file, wf_id="wf_id1"):
+    def get_default_workflow_state(self):
+        return {
+                  "domain": {
+                      "spec": {},
+                  },
+                  "stack": {
+                      "spec": {}
+                  },
+                  "role_groups": {
+
+                  }
+        }
+
+    def get_default_model(self, workflow_file, wf_id="wf_id1", workflow_state={}):
         apenv = ApEnv()
         apenv.add(wf_id, {})
         apenv.add_task_resolver(wf_id, TaskResolver(self))
         apenv.add_inf_resolver(wf_id, InfResolver())
-        model = WorkflowModel.load(self.openf(workflow_file))
-        ex = WorkflowExecutor(apenv, model=model)
+        model = WorkflowModel.load(apenv=apenv, wf_spec_stream=self.openf(workflow_file),
+                                   workflow_state=workflow_state)
+        ex = WorkflowExecutor(apenv=apenv, model=model)
         return model, ex
 
     def execute_workflow(self, executor, timeout=10):

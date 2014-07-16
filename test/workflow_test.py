@@ -84,8 +84,8 @@ class WorkflowTests(APtest):
         return TouchfileFailTask("TouchfileFail", apenv, wf_id, inf, properties, workflow_state)
 
     def _remove_files_if_exists(self, model):
-        for group in model.groupset:
-            for task in group["tasks"]:
-                fp = task["properties"]["file_path"]
+        for group in model.groupset.groups:
+            for task in group.tasks:
+                fp = task.properties.get("file_path")
                 if os.path.isfile(fp):
                     os.remove(fp)

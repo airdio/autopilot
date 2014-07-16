@@ -54,7 +54,7 @@ class Inf(object):
         """
         pass
 
-    def provision_role(self, domain_spec, stack_spec, role_spec={}, tags=[]):
+    def provision_instances(self, domain_spec, stack_spec, role_spec={}, tags=[]):
         """
         Provision the role as per spec
         """

@@ -17,10 +17,10 @@ class AWStest(APtest):
     AWS tests base class
     """
     def get_aws_inf(self):
-        self.aws_access_key = os.environ["AWS_ACCESS_KEY"]
-        self.aws_secret_key = os.environ["AWS_SECRET_KEY"]
-        return AWSInf(aws_access_key=self.aws_access_key,
-                      aws_secret_key=self.aws_secret_key)
+        aws_access_key = os.environ["AWS_ACCESS_KEY"]
+        aws_secret_key = os.environ["AWS_SECRET_KEY"]
+        return AWSInf(aws_access_key=aws_access_key,
+                      aws_secret_key=aws_secret_key)
 
     def delete_vpc(self, spec={}):
         vpc = self. _get_vpc()
@@ -85,9 +85,13 @@ class AWStest(APtest):
 
 
     def _get_ec2(self):
-        return awsutils.EasyEC2(aws_access_key_id=self.aws_access_key,
-                                aws_secret_access_key=self.aws_secret_key, aws_region_name="us-east-1")
+        aws_access_key = os.environ["AWS_ACCESS_KEY"]
+        aws_secret_key = os.environ["AWS_SECRET_KEY"]
+        return awsutils.EasyEC2(aws_access_key_id=aws_access_key,
+                                aws_secret_access_key=aws_secret_key, aws_region_name="us-east-1")
 
     def _get_vpc(self):
-        return awsutils.EasyVPC(aws_access_key_id=self.aws_access_key,
-                                aws_secret_access_key=self.aws_secret_key, aws_region_name="us-east-1")
+        aws_access_key = os.environ["AWS_ACCESS_KEY"]
+        aws_secret_key = os.environ["AWS_SECRET_KEY"]
+        return awsutils.EasyVPC(aws_access_key_id=aws_access_key,
+                                aws_secret_access_key=aws_secret_key, aws_region_name="us-east-1")

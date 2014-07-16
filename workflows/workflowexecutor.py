@@ -1,32 +1,27 @@
 #! /usr/bin/python
 
 from tornado import gen
-from autopilot.common.utils import Dct
-from autopilot.common import exception
-from autopilot.workflows.tasks.group import Group, GroupSet
-from autopilot.workflows.tasks.task import TaskState
+
 
 class WorkflowExecutor(object):
     """
-    Executes a given workflow
-    and manages its life cycle
+    Executes a given workflow and manages its life cycle
     """
-    def __init__(self, apenv, model, workflow_state={}, on_group_finished=None):
+    def __init__(self, apenv, model, on_group_finished=None):
         self.apenv = apenv
         self.model = model
+        self.on_group_finished = on_group_finished
+        self.workflow_state = model.workflow_state
+        self.inf = model.inf
+        self.groupset = model.groupset
         self.executed_groups = []
         self.success = True
         self.executed = False
-        self.on_group_finished = on_group_finished
-        self.workflow_state = workflow_state
-        self.inf = None
-        self.groupset = None
 
     def execute(self, wait_event=None):
         if self.executed:
             raise Exception("Execution of a workflow is only allowed once")
         self.executed = True
-        self._init()
         self._execute_groups(wait_event=wait_event)
 
 
@@ -89,24 +84,3 @@ class WorkflowExecutor(object):
 
     def _notify(self):
         pass
-
-    def _init(self):
-        # init inf
-        infresolver = self.apenv.get_inf_resolver(self.model.wf_id)
-        self.inf = infresolver.resolve(self.apenv, self.model)
-
-        # groupset
-        groups = []
-        for groupd in self.model.groupset:
-            groups.append(self._resolve_group(groupd))
-        self.groupset = GroupSet(groups)
-
-    def _resolve_group(self, groupd):
-        groupid = Dct.get(groupd, "groupid")
-        tasksd = Dct.get(groupd, "tasks")
-        tasks = []
-        task_resolver = self.apenv.get_task_resolver(self.model.wf_id)
-        for taskd in tasksd:
-            tasks.append(task_resolver.resolve(Dct.get(taskd, "name"), self.apenv, self.model.wf_id,
-                                               self.inf, Dct.get(taskd, "properties"), self.workflow_state))
-        return Group(self.model.wf_id, self.apenv, groupid, tasks)

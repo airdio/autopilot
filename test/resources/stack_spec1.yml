@@ -1,0 +1,18 @@
+# stack spec for workflow
+
+apspec:
+    type: stack.deploy
+    infrastructure: aws
+    org: contoso.com
+    domain: dev.marketing.contoso.com
+    name: hadoop-base
+    description: "hadoop base install"
+    role-groups:
+        hadoop:
+            hdfs:
+                instances: 5
+            yarn:
+                instances: 5
+        zk:
+            zookeeper:
+                instances: 3

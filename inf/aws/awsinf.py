@@ -37,7 +37,7 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
         """
         Close when all instances are running
         """
-        if self.yield_until_instances_in_state(timeout=timeout, interval=interval):
+        if self.yield_until_instances_in_state(state="running", timeout=timeout, interval=interval):
             self.close()
         else:
             self.close(new_errors=[exception.AWSInstanceProvisionTimeout(self.reservation.instances)])
@@ -61,8 +61,8 @@ class AWSInf(Inf):
     """
     AWS Infrastructure management functions
 
-    All wait and test actions following aws api calls are all pumped through the gevent and
-    should yield if we have monkey patched somewhere along the call chain.
+    All aws api calls are pumped through gevent and should yield if we have monkey patched
+    somewhere along the call chain.
     """
     def __init__(self, aws_access_key=None, aws_secret_key=None):
         Inf.__init__(self)
@@ -94,8 +94,8 @@ class AWSInf(Inf):
 
     def init_stack(self, domain_spec, stack_spec={}):
         """
-        We need a VPC in the role_spec that we can use
-        Create a subnet for the role with route tables and security groups
+        Create subnets attached to the VPC and add new route table. Route subnet traffic to the
+        internet gateway. Assumes an existing VPC.
         """
         rc = AWSInfResponseContext(aws_inf=self, spec=stack_spec)
         vpc_id =Dct.get(domain_spec, "vpc_id")
@@ -126,7 +126,7 @@ class AWSInf(Inf):
         """
         self.vpc_conn.delete_vpc(vpc_id=Dct.get(domain_spec, "vpc_id"), force=delete_dependencies)
 
-    def provision_role(self, domain_spec, stack_spec, role_spec={}, tags=[]):
+    def provision_instances(self, domain_spec, stack_spec, instance_spec={}, tags=[]):
         """
         We need a subnet in the the instance_spec
         1. Create default security group with inbound traffic for:
@@ -139,43 +139,50 @@ class AWSInf(Inf):
         # required parameters
         vpc_id = Dct.get(domain_spec, "vpc_id")
         subnet_id = Dct.get(stack_spec["subnets"][0], "subnet_id")
-
-        uname = Dct.get(role_spec, "uname")
-        image_id = Dct.get(role_spec, "image_id")
-        instance_type = Dct.get(role_spec, "instance_type")
-        key_pair_name = Dct.get(role_spec, "key_pair_name")
-        instance_count = Dct.get(role_spec, "instance_count")
-        associate_public_ip = Dct.get(role_spec, "associate_public_ip", False)
-        auth_spec = Dct.get(role_spec, "auth_spec")
+        uname = Dct.get(instance_spec, "uname")
+        image_id = Dct.get(instance_spec, "image_id")
+        instance_type = Dct.get(instance_spec, "instance_type")
+        key_pair_name = Dct.get(instance_spec, "key_pair_name")
+        instance_count = Dct.get(instance_spec, "instance_count")
+        associate_public_ip = Dct.get(instance_spec, "associate_public_ip", False)
+        auth_spec = Dct.get(instance_spec, "auth_spec")
 
         # create a security group
-        sg = self.ec2_conn.create_group("sg_{0}".format(uname),
-                                        description="security group for {0}".format(uname),
-                                        auth_ssh=True, vpc_id=vpc_id,
-                                        auth_spec=auth_spec)
-
-        role_spec["security_group_ids"] = [sg.id]
+        sg = self.ec2_conn.get_or_create_group("sg_{0}".format(uname),
+                                               description="security group for {0}".format(uname),
+                                               auth_ssh=True, vpc_id=vpc_id, auth_spec=auth_spec)
+        instance_spec["security_group_ids"] = [sg.id]
 
         # schedule instance creation.
         reservation = self.ec2_conn.request_instances(image_id=image_id,
                                                       instance_type=instance_type,
                                                       key_name=key_pair_name,
                                                       max_count=instance_count,
-                                                      security_group_ids=role_spec["security_group_ids"],
+                                                      security_group_ids=instance_spec["security_group_ids"],
                                                       subnet_id=subnet_id,
                                                       associate_public_ip=associate_public_ip)
 
-        role_spec["reservation"] = reservation
-
         # create a response context
-        rc = AwsInfProvisionResponseContext(aws_inf=self, spec=role_spec, reservation=reservation)
+        rc = AwsInfProvisionResponseContext(aws_inf=self, spec=instance_spec, reservation=reservation)
         rc.close_on_instances_ready()
+        self._fill_instance_details(vpc_id, subnet_id, reservation.instances, instance_spec)
 
         # return the context
         return rc
 
-    def get_stack_status(self, stack_spec):
-        pass
+
+    def _fill_instance_details(self, vpc_id, subnet_id, instances, instance_spec):
+        nspec = {}
+        nspec.update({'vpc_id': vpc_id})
+        nspec.update({'subnet_id': subnet_id})
+        interfaces = []
+
+        for instance in instances:
+            instance.update()
+            interfaces.append({'instance_id': instance.id, 'public_dns_name': instance.public_dns_name, 'private_dns_name': instance.private_dns_name,
+                               'public_ip_address': instance.ip_address, 'private_ip_address': instance.private_ip_address})
+        nspec.update({'interfaces': interfaces})
+        instance_spec['instances'] = nspec
 
     def _get_ec2(self):
         return awsutils.EasyEC2(aws_access_key_id = self.aws_access_key,

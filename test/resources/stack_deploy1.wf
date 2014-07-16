@@ -1,6 +1,6 @@
 {
     "wf_id": "wf_id1",
-    "type": "stack.deployment",
+    "type": "stack",
     "target": "aptest",
     "timestamp": 123214334,
     "owner": "sujeetv",
@@ -18,7 +18,7 @@
     {
         "groupid": "domain_init",
         "tasks":[{
-            "name": "AWSDomainInit",
+            "name": "DomainInit",
             "properties": {
                 "domain": "dev.marketing.myfoo.com"
             }
@@ -27,18 +27,20 @@
     {
         "groupid": "stack_init",
         "tasks":[{
-            "name": "AWSStackInit",
+            "name": "StackInit",
             "properties": {
+                "stack": "aptest"
             }
         }]
     },
     {
         "groupid": "canary",
         "tasks": [{
-            "name": "AWSDeployRole",
+            "name": "DeployRole",
             "properties": {
                 "stack": "aptest",
                 "domain": "dev.marketing.myfoo.com",
+                "role_group": "mysql",
                 "role": "mysql.dev.marketing.myfoo.com",
                 "version": "1.0",
                 "instance_count": 1,
@@ -58,10 +60,11 @@
             }
         },
         {
-            "name": "AWSDeployRole",
+            "name": "DeployRole",
             "properties": {
                 "stack": "aptest",
                 "domain": "dev.marketing.myfoo.com",
+                "role_group": "mongodb",
                 "role": "mongodb.dev.marketing.myfoo.com",
                 "version": "1.0",
                 "instance_count": 1,

@@ -1,0 +1,17 @@
+# role spec for workflow
+
+apspec:
+    type: roles
+    roles:
+        hdfs:
+          version: 1.0
+          deploy:
+            git: https://www.github.com/contoso/marketing/hdfs
+        yarn:
+          version: 2.0
+          deploy:
+            git: https://www.github.com/contoso/marketing/yarn
+        zookeeper:
+          version: 1.0
+          deploy:
+            git: https://www.github.com/contoso/marketing/zk

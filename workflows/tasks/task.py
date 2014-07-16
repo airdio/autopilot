@@ -41,7 +41,7 @@ class TaskResult(object):
 
 class Task(object):
     """
-    Base class for Tasks
+    Models a runnable task
     """
     def __init__(self, apenv, name, wf_id, inf, properties, workflow_state):
         self.apenv = apenv

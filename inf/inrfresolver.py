@@ -9,13 +9,10 @@ class InfResolver(object):
     def __init__(self):
         pass
 
-    def resolve(self, apenv, model):
-        target = Dct.get(model.inf, "target")
-        properties = Dct.get(model.inf, "properties")
+    def resolve(self, apenv, target, properties):
         func = getattr(InfResolver, "_get_{0}".format(target))
         return func(self, apenv, properties)
 
     def _get_aws(self, apenv, properties):
-        return AWSInf(Dct.get(properties, "aws_access_key_id"),
-                        Dct.get(properties, "aws_secret_access_key"))
+        return AWSInf(properties.get("aws_access_key_id"), properties.get("aws_secret_access_key"))
 

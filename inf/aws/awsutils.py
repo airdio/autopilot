@@ -262,8 +262,8 @@ class EasyEC2(EasyAWS):
         finally:
             s.stop()
 
-    def create_group(self, name, description, auth_ssh=False,
-                     auth_group_traffic=False, vpc_id=None, auth_spec={}):
+    def get_or_create_group(self, name, description, auth_ssh=False,
+                            auth_group_traffic=False, vpc_id=None, auth_spec={}):
         """
         Create security group with name/description. auth_ssh=True
         will open port 22 to world (0.0.0.0/0). auth_group_traffic
@@ -344,23 +344,6 @@ class EasyEC2(EasyAWS):
             return self.get_security_group(name, vpc_id=None)
         except exception.SecurityGroupDoesNotExist:
             pass
-
-    def get_or_create_group(self, name, description, auth_ssh=True,
-                            auth_group_traffic=False, vpc_id=None):
-        """
-        Try to return a security group by name. If the group is not found,
-        attempt to create it.  Description only applies to creation.
-
-        auth_ssh - authorize ssh traffic from world
-        auth_group_traffic - authorizes all traffic between members of the
-                             group
-        """
-        sg = self.get_group_or_none(name)
-        if not sg:
-            sg = self.create_group(name, description, auth_ssh=auth_ssh,
-                                   auth_group_traffic=auth_group_traffic,
-                                   vpc_id=vpc_id)
-        return sg
 
     def get_security_group(self, groupname, vpc_id=None):
         try:

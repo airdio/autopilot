@@ -11,12 +11,9 @@ from autopilot.inf.aws.awsinf import AwsInfProvisionResponseContext
 from autopilot.workflows.tasks.task import TaskState
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
 from autopilot.workflows.workflowmodel import WorkflowModel
-from autopilot.stack.tasks.deployrole import AWSDeployRole, AWSDomainInit, AWSStackInit
+from autopilot.specifications.tasks.deployrole import DeployRole, DomainInit, StackInit
 from autopilot.test.common.utils import Utils
 from autopilot.test.aws.awstest import AWStest
-
-
-
 # monkey patch
 gevent.monkey.patch_all()
 
@@ -42,31 +39,31 @@ class AwsProvisionTests(AWStest):
 
     def test_init_domain(self):
         a = self.get_aws_inf()
-        spec = {
+        domain_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
         }
 
         try:
-            rc = a.init_domain(spec)
+            rc = a.init_domain(domain_spec=domain_spec)
             self.ae(len(rc.errors), 0, "errors found")
             self.at(len(rc.spec["vpc_id"]) > 0, "vpc_id")
             self.at(len(rc.spec["internet_gateway_id"]) > 0, "internet_gateway_id")
         finally:
-            self.delete_vpc(spec)
+            self.delete_vpc(domain_spec)
 
     def test_init_stack(self):
         """
         test stack initialization
         """
         a = self.get_aws_inf()
-        spec = {
+        domain_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "domain": "*.aptest.com",
         }
         rc_stack = None
         try:
-            rc_domain = a.init_domain(spec)
+            rc_domain = a.init_domain(domain_spec=domain_spec)
             stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "vpc_id": rc_domain.spec["vpc_id"],
@@ -74,7 +71,7 @@ class AwsProvisionTests(AWStest):
                 "cidr": "10.0.0.0/24",
                 "subnets": rc_domain.spec["subnets"]
             }
-            rc_stack = a.init_stack(stack_spec)
+            rc_stack = a.init_stack(domain_spec=domain_spec, stack_spec=stack_spec)
             subnets = rc_stack.spec["subnets"]
             first_subnet = subnets[0]
 
@@ -99,7 +96,7 @@ class AwsProvisionTests(AWStest):
         reservation = None
         rc_instances = None
         try:
-            rc_domain = aws_inf.init_domain(domain_spec)
+            rc_domain = aws_inf.init_domain(domain_spec=domain_spec)
             stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "vpc_id": rc_domain.spec["vpc_id"],
@@ -107,11 +104,11 @@ class AwsProvisionTests(AWStest):
                 "cidr": "10.0.0.0/24",
                 "subnets": rc_domain.spec["subnets"]
             }
-            rc_stack = aws_inf.init_stack(stack_spec)
+            rc_stack = aws_inf.init_stack(domain_spec=domain_spec, stack_spec=stack_spec)
             subnets = rc_stack.spec["subnets"]
             first_subnet = subnets[0]
 
-            role_spec = {
+            instance_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "image_id": "ami-a25415cb",
                 "instance_type": "m1.medium",
@@ -125,7 +122,8 @@ class AwsProvisionTests(AWStest):
                 "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
                               {"protocol": "tcp", "from": 3306, "to": 3306}],
             }
-            rc_instances = aws_inf.provision_role(role_spec)
+            rc_instances = aws_inf.provision_instances(domain_spec=domain_spec, stack_spec=stack_spec,
+                                                       instance_spec=instance_spec)
             reservation = rc_instances.spec["reservation"]
 
             self.at(rc_instances.spec["security_group_ids"])
@@ -139,41 +137,32 @@ class AwsProvisionTests(AWStest):
                 #self.delete_vpc(rc_instances.spec)
 
     def test_deploy_role(self):
-        (model, ex) = self.get_default_model("stack_deploy1.yml")
+        workflow_state = self.get_default_workflow_state()
+        (model, ex) = self.get_default_model("stack_deploy1.wf", workflow_state=workflow_state)
         model.inf["properties"]["aws_access_key_id"] = os.environ["AWS_ACCESS_KEY"]
         model.inf["properties"]["aws_secret_access_key"] = os.environ["AWS_SECRET_KEY"]
-
-        ex.workflow_state = {
-                  "domain": {
-                      "spec": {},
-                  },
-                  "stack": {
-                      "spec": {}
-                  },
-                  "roles": {},
-        }
         instances = None
         try:
-            self.execute_workflow(ex, timeout=240)
-            # self.ae(True, ex.success)
-            # for group in model.groupset.groups:
-            #     for task in group.tasks:
-            #         self.ae(TaskState.Done, task.result.state, "task should be in Done state")
-            # rc_instances = {}
-            # self.at(rc_instances.spec["security_group_ids"])
-            # self.ae(2, len(instances))
+            self.execute_workflow(ex, timeout=300)
+            print ex.workflow_state
+            self.ae(True, ex.success)
+            for group in ex.groupset.groups:
+                for task in group.tasks:
+                    self.ae(TaskState.Done, task.result.state, "task should be in Done state")
+
+            for (key, role_group) in ex.workflow_state['role_groups'].items():
+                instances = [interface["instance_id"] for interface in role_group['instances']['interfaces']]
         finally:
-            # if instances:
-            #     self.terminate_instances([instance.id for instance in instances])
+            if instances:
+                self.terminate_instances(instances)
             pass
 
+    def get_DeployRole(self, apenv, inf, wf_id, properties, workflow_state):
+        return DeployRole(apenv, wf_id, inf, properties, workflow_state)
 
-    def get_AWSDeployRole(self, apenv, inf, wf_id, properties, workflow_state):
-        return AWSDeployRole(apenv, wf_id, inf, properties, workflow_state)
+    def get_DomainInit(self, apenv, inf, wf_id, properties, workflow_state):
+        return DomainInit(apenv, wf_id, inf, properties, workflow_state)
 
-    def get_AWSDomainInit(self, apenv, inf, wf_id, properties, workflow_state):
-        return AWSDomainInit(apenv, wf_id, inf, properties, workflow_state)
-
-    def get_AWSStackInit(self, apenv, inf, wf_id, properties, workflow_state):
-        return AWSStackInit(apenv, wf_id, inf, properties, workflow_state)
+    def get_StackInit(self, apenv, inf, wf_id, properties, workflow_state):
+        return StackInit(apenv, wf_id, inf, properties, workflow_state)
 
