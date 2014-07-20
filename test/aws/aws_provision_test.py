@@ -139,8 +139,6 @@ class AwsProvisionTests(AWStest):
     def test_deploy_role(self):
         workflow_state = self.get_default_workflow_state()
         (model, ex) = self.get_default_model("stack_deploy1.wf", workflow_state=workflow_state)
-        model.inf["properties"]["aws_access_key_id"] = os.environ["AWS_ACCESS_KEY"]
-        model.inf["properties"]["aws_secret_access_key"] = os.environ["AWS_SECRET_KEY"]
         instances = None
         try:
             self.execute_workflow(ex, timeout=300)

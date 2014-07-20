@@ -77,7 +77,8 @@ class Stackspec(Apspec):
     Define the stack
     """
     def __init__(self, apenv, org, domain, type, inf, name, description, groupsd):
-        Apspec.__init__(self, apenv=apenv, org=org, domain=domain, type=type, inf=inf, description=description)
+        Apspec.__init__(self, apenv=apenv, org=org, domain=domain,
+                        type=type, inf=inf, description=description)
         self.name = name
         self.groups = self._resolve_role_groups(groupsd)
 
@@ -91,14 +92,10 @@ class Stackspec(Apspec):
     class Rolegroup(object):
         def __init__(self, name, refsd={}):
             self.name = name
+            self.order = refsd.get('order')
             self.rolerefs = {}
-            for (role, val) in refsd.items():
-                self.rolerefs[role] = Stackspec.RoleRef(role, val)
-
-    class RoleRef(object):
-        def __init__(self, name, refd):
-            self.name = name
-            self.instances = refd.get('instances')
+            self.instanced = refsd.get('instance')
+            self.rolerefs = refsd.get('roles')
 
 
 

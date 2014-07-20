@@ -1,0 +1,28 @@
+# role spec for workflow
+
+apspec:
+    type: roles
+    org: contoso.com
+    domain: dev.marketing.contoso.com
+    roles:
+        hdfs:
+          version: 2.4
+          deploy:
+            git: https://www.github.com/contoso/marketing/hdfs
+            branch: dev
+            start: start.sh
+            stop: stop.sh
+        yarn:
+          version: 2.0
+          deploy:
+            git: https://www.github.com/contoso/marketing/yarn
+            branch: dev
+            start: start.sh
+            stop: stop.sh
+        zookeeper:
+          version: 2.0
+          deploy:
+            git: https://www.github.com/contoso/marketing/zk
+            branch: dev
+            start: start.sh
+            stop: stop.sh

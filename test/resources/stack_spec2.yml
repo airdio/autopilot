@@ -1,0 +1,29 @@
+# stack spec for hdfs
+
+apspec:
+  type: stack
+  infrastructure: aws
+  org: contoso.com
+  domain: dev.marketing.contoso.com
+  name: hadoop-base
+  description: "hadoop base install"
+  role-groups:
+    hdfs:
+      order: 1
+      instance:
+        id: ami-a25415cb
+        type: m3.4xlarge
+        count: 5
+      roles: [hdfs, yarn]
+    zk:
+      instance:
+        id: ami-a25415cb
+        type: m3.2xlarge
+        count: 3
+      roles: [zookeeper]
+    monitoring:
+      instance:
+        id: ami-a25415cb
+        type: m3.2xlarge
+        count: 1
+      roles: [ganglia]

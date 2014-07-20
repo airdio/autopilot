@@ -8,10 +8,7 @@
     "domain": "dev.marketing.myfoo.com",
     "inf": {
         "target": "aws",
-        "properties": {
-            "aws_access_key_id": "987654321BA",
-            "aws_secret_access_key": "123456789AB"
-        }
+        "properties": {}
     },
     "execution_flags": ["atomic"],
     "taskgroups": [
@@ -34,7 +31,7 @@
         }]
     },
     {
-        "groupid": "canary",
+        "groupid": "deploy_roles",
         "tasks": [{
             "name": "DeployRole",
             "properties": {
@@ -42,11 +39,11 @@
                 "domain": "dev.marketing.myfoo.com",
                 "role_group": "mysql",
                 "role": "mysql.dev.marketing.myfoo.com",
-                "version": "1.0",
                 "instance_count": 1,
                 "instance_type": "m3.medium",
                 "image_id":"ami-a25415cb",
                 "key_pair_name": "ocg-test",
+                "version": "1.0",
                 "repository": {
                     "type": "git",
                     "url": "https://www.github.com/myfoo/mysql",

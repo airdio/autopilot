@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 from tornado import gen
+from autopilot.workflows.tasks.task import TaskState
 
 
 class WorkflowExecutor(object):
