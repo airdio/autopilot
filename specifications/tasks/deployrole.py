@@ -13,24 +13,32 @@ class DeployRole(Task):
     def __init__(self, apenv, wf_id, inf, properties, workflow_state):
         Task.__init__(self, apenv, DeployRole.Name, wf_id, inf, properties, workflow_state)
 
+    def serialize(self):
+        return dict(name=self.name,
+                    properties=dict(role_group=self.properties["role_group"].serialize()))
+
     def on_run(self, callback):
         """
         """
-        # check what we have in the workflow state (this is the stack state)
-        domain_spec = self.workflow_state["domain"]["spec"]
-        stack_spec = self.workflow_state["stack"]["spec"]
-        role_groups = self.workflow_state["role_groups"]
+        # check what we have materilized in the workflow state (this is the stack state)
+        materialized_spec = self.workflow_state.get("stack_spec").get("materialized")
+        # todo: Handle the case when domains and stacks are not materialized. Throw exception
 
-        # get role and role group from the properties
-        role_group_name = self.properties.get("role_group")
-        rolename = self.properties.get("role")
-        uname = "{0}.{1}.{2}".format(self.properties.get('stack'), role_group_name,
-                                     self.properties.get('domain'))
+        mdomain_spec = materialized_spec.get("domain")
+        mstack_spec = materialized_spec.get("stack")
+        mrole_groups = materialized_spec.get("role_groups")
 
-        #check if we have a instances already created for this role_group
+        #todo: Handle upgrade, scale out and scale back case
+
+        # get the target role groups and roles from the properties
+        target_role_group = self.properties.get("role_group")
+        target_role_group_name = target_role_group.name
+
+        # check if we have materialized instances already created for this role_group
         # if we don't then create instances first.
-        existing_instances_spec = self._get_existing_instances_spec(role_groups, role_group_name)
-        if not existing_instances_spec:
+        if not mrole_groups or not mrole_groups.get(target_role_group_name):
+            uname = "{0}.{1}.{2}".format(self.properties.get('stack'), target_role_group_name,
+                                         materialized_spec.get("domain"))
             # we don't have provisioned instances for this group
             # ...so provision instances
             auth_spec = []
@@ -44,12 +52,14 @@ class DeployRole(Task):
                 instance_spec["instance_type"] = self.properties["instance_type"]
                 instance_spec["image_id"] = self.properties["image_id"]
                 instance_spec["key_pair_name"] = self.properties["key_pair_name"]
-                rc_instances = self.inf.provision_instances(domain_spec=domain_spec, stack_spec=stack_spec,
+                rc_instances = self.inf.provision_instances(domain_spec=mdomain_spec, stack_spec=mstack_spec,
                                                             instance_spec=instance_spec)
 
-                self.workflow_state["role_groups"][role_group_name] = {}
-                self.workflow_state["role_groups"][role_group_name]["instances"] = rc_instances.spec['instances']
-                self.workflow_state["role_groups"][role_group_name]["spec"] = rc_instances.spec
+                # update materialized role groups
+                if not mrole_groups:
+                    mrole_groups = {}
+                    materialized_spec.update(dict(role_groups=mrole_groups))
+                mrole_groups[target_role_group_name] = rc_instances.spec
 
         # verify if agents are running on each instance
         self._verify_instance_agents()
@@ -81,12 +91,6 @@ class DeployRole(Task):
         """
         pass
 
-    def _get_existing_instances_spec(self, role_groups, role_group_name):
-        for (rg, val) in role_groups.items():
-            if rg == role_group_name:
-                return val['instances']
-        return None
-
 
 class DomainInit(Task):
     """
@@ -97,10 +101,15 @@ class DomainInit(Task):
     def __init__(self, apenv, wf_id, inf, properties, workflow_state):
         Task.__init__(self, apenv, DomainInit.Name, wf_id, inf, properties, workflow_state)
 
+    def serialize(self):
+        return dict(name=self.name, properties=dict(domain=self.properties.get("stack_spec").domain))
+
     def on_run(self, callback):
-        domain = self.properties.get("domain")
-        rc = self.inf.init_domain(domain_spec={"domain": domain})
-        self.workflow_state["domain"]["spec"] = rc.spec
+        # init domain only if we do not have a materiazlied domain
+        if not self.workflow_state.get("stack_spec").get("materialized"):
+            domain_spec = dict(domain=self.properties.get("stack_spec").domain)
+            rc = self.inf.init_domain(domain_spec=domain_spec)
+            self.workflow_state["stack_spec"].update(dict(materialized=dict(domain=rc.spec)))
 
         callback(TaskState.Done, ["Task {0} done".format(self.name)], [])
 
@@ -109,6 +118,7 @@ class DomainInit(Task):
         Delete domain
         """
         pass
+
 
 class StackInit(Task):
     """
@@ -119,13 +129,24 @@ class StackInit(Task):
     def __init__(self, apenv, wf_id, inf, properties, workflow_state):
         Task.__init__(self, apenv, StackInit.Name, wf_id, inf, properties, workflow_state)
 
+    def serialize(self):
+        return dict(name=self.name,  properties=dict(stack=self.properties.get("stack_spec").name))
+
     def on_run(self, callback):
         """
+        Initialize stack
         """
-        domain_spec = self.workflow_state["domain"]["spec"]
-        stack_spec = {}
-        rc_stack = self.inf.init_stack(domain_spec=domain_spec, stack_spec=stack_spec)
-        self.workflow_state["stack"]["spec"] = rc_stack.spec
+        materialized_spec = self.workflow_state.get("stack_spec").get("materialized")
+        if not materialized_spec:
+            # todo: throw exception here since we do not have a domain
+            pass
+        if not self.workflow_state.get("stack_spec").get("materialized").get("stack"):
+            # create a new stack since we do not have one
+            domain_spec = materialized_spec.get("domain")
+            rc = self.inf.init_stack(domain_spec=domain_spec, stack_spec={})
+
+            # update workflow state with updated spec
+            materialized_spec.update(dict(stack=rc.spec))
 
         callback(TaskState.Done, ["Task {0} done".format(self.name)], [])
 

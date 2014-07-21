@@ -56,6 +56,9 @@ class Task(object):
         self.workflow_state = workflow_state
         self.result = TaskResult(self, self.workflow, TaskState.Initialized)
 
+    def serialize(self):
+        return dict(name=self.name, properties={})
+
     # don't override this. Override process_run
     def run(self, callback):
         # print "running {0} at {1}".format(self.name, datetime.datetime.utcnow() )

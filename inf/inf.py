@@ -35,6 +35,9 @@ class Inf(object):
     All functions should return InfResponseContext.
     """
 
+    def serialize(self):
+        return dict()
+
     def init_domain(self, domain_spec={}):
         """
         Creates a new domain, an isolated routable environment that is unique to an org

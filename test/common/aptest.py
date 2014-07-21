@@ -33,15 +33,8 @@ class APtest(unittest.TestCase):
 
     def get_default_workflow_state(self):
         return {
-                  "domain": {
-                      "spec": {},
-                  },
-                  "stack": {
-                      "spec": {}
-                  },
-                  "role_groups": {
-
-                  }
+                  "stack_spec": {},
+                  "role_groups": {},
         }
 
     def get_default_apenv(self, wf_id, infd={}):
@@ -66,7 +59,7 @@ class APtest(unittest.TestCase):
         wait_event.wait(timeout=timeout)
 
     def get_unique_wf_id(self):
-        return uuid.uuid4()
+        return str(uuid.uuid4())
 
     def openf(self, path):
         return open(os.path.join(os.environ["AUTOPILOT_HOME"], "test/resources", path))

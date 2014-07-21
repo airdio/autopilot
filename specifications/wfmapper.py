@@ -4,7 +4,7 @@ from autopilot.common import utils
 from autopilot.workflows.tasks.group import Group, GroupSet
 from autopilot.workflows.tasks.task import Task
 from autopilot.workflows.workflowmodel import WorkflowModel
-from autopilot.specifications.tasks.deployrole import DeployRole
+from autopilot.specifications.tasks.deployrole import DomainInit, StackInit, DeployRole
 
 
 class StackMapper(object):
@@ -51,29 +51,27 @@ class StackMapper(object):
 
     def _build_task_groups(self):
         """
-        We always add domain init and stack init tasks to the groups even if
-        they might not be needed (there is an existing domain and stack).
+        We always add domain init and stack init tasks to task groups even if
+        they might not be needed (eg if there is an existing domain and stack).
         We will let the inf implementation check if there is one and its
         healthy.
         """
         groups = []
         #domain init task group
-        domain_init_task = Task(apenv=self.apenv,
-                                name="DomainInit",
-                                wf_id=self.wf_id,
-                                inf=self.inf,
-                                properties=dict(proeprties=dict(domain=self.domain)),
-                                workflow_state=self.stack_state)
+        domain_init_task = DomainInit(apenv=self.apenv,
+                                      wf_id=self.wf_id,
+                                      inf=self.inf,
+                                      properties=dict(stack_spec=self.stack_spec),
+                                      workflow_state=self.stack_state)
 
         groups.append(Group(wf_id=self.wf_id, apenv=self.apenv, groupid="domain_init", tasks=[domain_init_task]))
 
         #stack init
-        stack_init_task = Task(apenv=self.apenv,
-                               name="StackInit",
-                               wf_id=self.wf_id,
-                               inf=self.inf,
-                               properties=dict(proeprties=dict(stack=self.stack_spec.name)),
-                               workflow_state=self.stack_state)
+        stack_init_task = StackInit(apenv=self.apenv,
+                                    wf_id=self.wf_id,
+                                    inf=self.inf,
+                                    properties=dict(stack_spec=self.stack_spec),
+                                    workflow_state=self.stack_state)
 
         groups.append(Group(wf_id=self.wf_id, apenv=self.apenv, groupid="stack_init", tasks=[stack_init_task]))
 
@@ -102,11 +100,13 @@ class StackMapper(object):
         ordered_role_groups.sort(cmp=_role_group_cmp)
         for role_group in ordered_role_groups:
             properties = {}
-            properties.update(dict(role_group=role_group))
-            roles={}
+            # clear the roles list
+            role_group.roles = []
             for roleref in role_group.rolerefs:
-                roles[roleref] = self.roles_spec.roles.get(roleref)
+                role_group.roles.append(self.roles_spec.roles.get(roleref))
 
+
+            properties.update(dict(role_group=role_group))
             task = DeployRole(apenv=self.apenv, wf_id=self.wf_id, inf=self.inf,
                               properties=properties, workflow_state=self.stack_state)
 
@@ -118,15 +118,18 @@ class StackMapper(object):
         parallel_tasks = []
         for role_group in parallel_role_groups:
             properties = {}
-            properties.update(dict(role_group=role_group))
-            roles={}
+            # clear the roles list
+            role_group.roles = []
             for roleref in role_group.rolerefs:
-                roles[roleref] = self.roles_spec.roles.get(roleref)
+                role_group.roles.append(self.roles_spec.roles.get(roleref))
+            properties.update(dict(role_group=role_group))
 
             task = DeployRole(apenv=self.apenv, wf_id=self.wf_id, inf=self.inf,
                               properties=properties, workflow_state=self.stack_state)
             parallel_tasks.append(task)
-        groups.append(Group(wf_id=self.wf_id, apenv=self.apenv,
-                            groupid="parallel_deploy_roles", tasks=parallel_tasks))
+
+        if parallel_tasks:
+            groups.append(Group(wf_id=self.wf_id, apenv=self.apenv,
+                                groupid="parallel_deploy_roles", tasks=parallel_tasks))
 
         return GroupSet(groups)

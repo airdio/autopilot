@@ -7,7 +7,7 @@ class WorkflowModel(object):
     """
     Object representation of a workflow
     """
-    def __init__(self, wf_id, type, target, domain, inf, groupset, workflow_state={}, execution_flags=[]):
+    def __init__(self, wf_id, type, target, domain, inf, groupset, workflow_state={}):
         self.wf_id = wf_id
         self.type = type
         self.target = target
@@ -15,7 +15,14 @@ class WorkflowModel(object):
         self.domain = domain
         self.groupset = groupset
         self.workflow_state = workflow_state
-        self.execution_flags=execution_flags
+
+    def serialize(self):
+        return dict(wf_id=self.wf_id,
+                    type=self.type,
+                    target=self.target,
+                    inf=self.inf.serialize(),
+                    domain=self.domain,
+                    groupset=self.groupset.serialize())
 
     @staticmethod
     def load(apenv, wf_spec_stream, workflow_state={}):

@@ -13,6 +13,11 @@ class Group(object):
         self.groupid = groupid
         self.tasks = tasks
 
+    def serialize(self):
+        return dict(groupid=self.groupid,
+                    tasks=[t.serialize() for t in self.tasks if t]
+                    )
+
     def get_execution_context(self):
         """
         Returns a fresh execution context
@@ -26,6 +31,9 @@ class GroupSet(object):
     """
     def __init__(self, groups=[]):
         self.groups = groups
+
+    def serialize(self):
+        return [g.serialize() for g in self.groups if g]
 
 
 class GroupExecutionContext(object):

@@ -59,17 +59,18 @@ class Rolespec(Apspec):
     def _resolve_roles(rolesd):
         roles = {}
         for (role, val) in rolesd.items():
-            roles[role] = Rolespec.Role(role, val.get('version'), val.get('deploy'))
+            roles[role] = Role(role, val.get('version'), val.get('deploy'))
         return roles
 
-    class Role(object):
-        def __init__(self, name, version, deploy):
-            self.name = name
-            self.version = version
-            self.deploy = deploy
 
-        def todict(self):
-            return {self.name: dict(version=self.version, deploy=self.deploy)}
+class Role(object):
+    def __init__(self, name, version, deploy):
+        self.name = name
+        self.version = version
+        self.deploy = deploy
+
+    def serialize(self):
+        return dict(name=self.name, version=self.version, deploy=self.deploy)
 
 
 class Stackspec(Apspec):
@@ -82,20 +83,32 @@ class Stackspec(Apspec):
         self.name = name
         self.groups = self._resolve_role_groups(groupsd)
 
+    def serialize(self):
+        return dict(name=self.name)
+
     def _resolve_role_groups(self, groupsd):
         rg = {}
         for (group, val) in groupsd.items():
-            rg[group] = Stackspec.Rolegroup(group, val)
+            rg[group] = Rolegroup(group, val)
         return rg
 
 
-    class Rolegroup(object):
-        def __init__(self, name, refsd={}):
-            self.name = name
-            self.order = refsd.get('order')
-            self.rolerefs = {}
-            self.instanced = refsd.get('instance')
-            self.rolerefs = refsd.get('roles')
+class Rolegroup(object):
+    def __init__(self, name, refsd={}):
+        self.name = name
+        self.order = refsd.get('order')
+        self.instanced = refsd.get('instance')
+        # rolerefs will only have role name
+        self.rolerefs = refsd.get('roles')
+        # roles will have instances of Role that will filled by the mapper
+        self.roles = []
+
+    def serialize(self):
+        return dict(name=self.name,
+                    order=self.order,
+                    rolerefs=self.rolerefs,
+                    instance=self.instanced,
+                    roles=[r.serialize() for r in self.roles if r])
 
 
 

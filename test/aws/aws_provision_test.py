@@ -37,7 +37,7 @@ class AwsProvisionTests(AWStest):
         response = AwsInfProvisionResponseContext({}, reservation=reservation)
         self.at(response.wait(timeout=2, interval=1))
 
-    def test_init_domain(self):
+    def _test_init_domain(self):
         a = self.get_aws_inf()
         domain_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
@@ -52,20 +52,22 @@ class AwsProvisionTests(AWStest):
         finally:
             self.delete_vpc(domain_spec)
 
-    def test_init_stack(self):
+    def _test_init_stack(self):
         """
         test stack initialization
         """
         a = self.get_aws_inf()
         domain_spec = {
-            "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+            #"uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+            "uname": "used_for_aptest_only",
             "domain": "*.aptest.com",
         }
         rc_stack = None
         try:
             rc_domain = a.init_domain(domain_spec=domain_spec)
             stack_spec = {
-                "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+                #"uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+                "uname": "used_for_aptest_only",
                 "vpc_id": rc_domain.spec["vpc_id"],
                 "internet_gateway_id": rc_domain.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
@@ -89,35 +91,26 @@ class AwsProvisionTests(AWStest):
         Test instance provision
         """
         aws_inf = self.get_aws_inf()
-        domain_spec = {
-            "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-            "domain": "*.aptest.com",
-        }
         reservation = None
         rc_instances = None
         try:
-            rc_domain = aws_inf.init_domain(domain_spec=domain_spec)
+            domain_spec = {
+            "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
+            "domain": "*.aptest.com",
+            "vpc_id": "vpc-5c0eab39",
+            "internet_gateway_id": "igw-c96eaaac",
+            }
             stack_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-                "vpc_id": rc_domain.spec["vpc_id"],
-                "internet_gateway_id": rc_domain.spec["internet_gateway_id"],
                 "cidr": "10.0.0.0/24",
-                "subnets": rc_domain.spec["subnets"]
+                "subnets": ["subnet-434b4d6b"]
             }
-            rc_stack = aws_inf.init_stack(domain_spec=domain_spec, stack_spec=stack_spec)
-            subnets = rc_stack.spec["subnets"]
-            first_subnet = subnets[0]
-
             instance_spec = {
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "image_id": "ami-a25415cb",
                 "instance_type": "m1.medium",
                 "key_pair_name": "aptest",
                 "instance_count": 2,
-                "vpc_id": rc_stack.spec["vpc_id"],
-                "subnet_id": first_subnet.get("subnet_id"),
-                "route_table_id": first_subnet.get("route_table_id"),
-                "route_association_id": first_subnet.get("route_association_id"),
                 "associate_public_ip": True,
                 "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
                               {"protocol": "tcp", "from": 3306, "to": 3306}],
