@@ -279,9 +279,9 @@ class EasyEC2(EasyAWS):
         sg = self.conn.create_security_group(name, description, vpc_id=vpc_id)
 
         # wait until we get the security group registered
-        while not self.get_group_or_none(name):
+        while not self.get_group_or_none(name, vpc_id=vpc_id):
             # yield until we know the group is created
-            print("Security group not found. Yielding: at {0}".format(utils.get_utc_now_seconds()))
+            log.info("awsutils", "Security group not found. Yielding: at {0}".format(utils.get_utc_now_seconds()))
             taskpool.doyield(seconds=10)
 
         if auth_ssh:

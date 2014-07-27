@@ -14,5 +14,6 @@ class InfResolver(object):
         return func(self, apenv, properties)
 
     def _get_aws(self, apenv, properties=None):
-        return AWSInf(apenv.get("aws_access_key_id"), apenv.get("aws_secret_access_key"))
+        return AWSInf(properties.get("aws_access_key_id"),
+                      properties.get("aws_secret_access_key"))
 

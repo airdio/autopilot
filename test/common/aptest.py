@@ -4,6 +4,7 @@ import os
 import unittest
 import uuid
 import simplejson
+from autopilot.test.common.utils import Utils
 from autopilot.common.apenv import ApEnv
 from autopilot.common.asyncpool import taskpool
 from autopilot.inf.inrfresolver import InfResolver
@@ -30,17 +31,16 @@ class APtest(unittest.TestCase):
                         if egroup.groupid == agroup.groupid]
         self.ae(len(expected.groupset.groups), len(agroup_names))
 
-
     def get_default_workflow_state(self):
-        return {
-                  "stack_spec": {},
-                  "role_groups": {},
-        }
+        stack_spec = dict(materialized=dict(domain=dict(vpc_id="vpc-5c0eab39", internet_gateway_id="igw-c96eaaac"),
+                                            stack=dict(cidr="10.0.0.0/24", subnets=["subnet-434b4d6b"])))
+        return dict(stack_spec=stack_spec)
 
-    def get_default_apenv(self, wf_id, infd={}):
+    def get_default_apenv(self, wf_id):
+        properties = dict(aws_access_key_id=os.environ["AWS_ACCESS_KEY"],
+                          aws_secret_access_key=os.environ["AWS_SECRET_KEY"])
         apenv = ApEnv()
-        apenv.add(wf_id, {})
-        apenv.add('inf', infd)
+        apenv.add(wf_id, dict(inf=properties))
         apenv.add_task_resolver(wf_id, TaskResolver(self))
         apenv.add_inf_resolver(wf_id, InfResolver())
         return apenv

@@ -1,7 +1,7 @@
 #! /usr/bin python
 
 from autopilot.common import utils
-
+from autopilot.common.logger import wflog
 
 class TaskState(object):
     """
@@ -49,19 +49,18 @@ class Task(object):
         self.inf = inf
         self.properties = properties
         self.result = None
-        self.workflow = wf_id
+        self.wf_id = wf_id
         self.finalcallback = None  # we do not have a callback yet
         self.starttime = None
         self.endtime = None
         self.workflow_state = workflow_state
-        self.result = TaskResult(self, self.workflow, TaskState.Initialized)
+        self.result = TaskResult(self, self.wf_id, TaskState.Initialized)
 
     def serialize(self):
         return dict(name=self.name, properties={})
 
     # don't override this. Override process_run
     def run(self, callback):
-        # print "running {0} at {1}".format(self.name, datetime.datetime.utcnow() )
         self.starttime = utils.get_utc_now_seconds()
         if callback is None:
             # todo exceptions
@@ -74,6 +73,8 @@ class Task(object):
         # we should to create an execution context here
         self.finalcallback = callback
         self.result.update(TaskState.Started, ["Task {0} Started".format(self.name)])
+
+        wflog.info(wf_id=self.wf_id, msg="begin task run: {0}".format(self.name))
         self.on_run(self._on_run_callback)
 
     # don't override this. Override process_rollback
@@ -86,6 +87,9 @@ class Task(object):
         # todo: assigning this callback is a hack.
         # we should to create an execution context here
         self.finalcallback = callback
+        self.result.update(TaskState.Rolledback, ["Task {0} Started".format(self.name)])
+
+        wflog.info(wf_id=self.wf_id, msg="begin task rollback: {0}".format(self.name))
         self.on_rollback(self._on_rollback_callback)
 
     # override in derived class
@@ -99,7 +103,6 @@ class Task(object):
         raise Exception("should not be called. Derived class should implement this")
 
     def _on_run_callback(self, final_state, messages=[], exceptions=[]):
-        print "Task {0} done. Final state {1}".format(self.name, final_state)
         self.result.update(final_state, messages, exceptions)
         self._finalize()
         # original callback
@@ -108,6 +111,7 @@ class Task(object):
     def _on_rollback_callback(self, final_state, messages=[], exceptions=[]):
         self.result.update(final_state, messages, exceptions)
         self._finalize()
+
         # call the original callback
         self.finalcallback(self)
 
@@ -118,4 +122,4 @@ class Task(object):
         send relevant events
         """
         self.endtime = utils.get_utc_now_seconds()
-        pass
+        wflog.info(wf_id=self.wf_id, msg="Task {0} done. Final state {1}".format(self.name, self.result.state))

@@ -83,7 +83,6 @@ class AWStest(APtest):
         ssh = SSHClient(host=host, username=username, private_key=key_pair)
         return ssh.execute(command)
 
-
     def _get_ec2(self):
         aws_access_key = os.environ["AWS_ACCESS_KEY"]
         aws_secret_key = os.environ["AWS_SECRET_KEY"]

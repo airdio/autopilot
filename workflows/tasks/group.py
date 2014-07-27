@@ -1,7 +1,7 @@
 #! /usr/bin/python
 from tornado import gen
 from autopilot.common.asyncpool import taskpool
-
+from autopilot.common.logger import wflog
 
 class Group(object):
     """
@@ -51,7 +51,6 @@ class GroupExecutionContext(object):
         self.finalcallback = callback
         for task in self.tasks:
             # schedule both the tasks to execute
-            print("Spawning task:{0}".format(task.name))
             taskpool.spawn(task.run, args=dict(callback=self._task_callback))
 
     def _task_callback(self, task):

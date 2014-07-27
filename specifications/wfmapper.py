@@ -40,13 +40,9 @@ class StackMapper(object):
         return uuid.uuid4()
 
     def _resolve_inf(self):
-        # properties = dict(properties=dict(aws_access_key_id=self.apenv.get('aws_access_key_id'),
-        #                                   aws_secret_access_key=self.apenv.get('aws_access_key_id')))
-
         target = self.stack_spec.inf
-        properties = self.apenv.get('inf').get(target)
-        return self.apenv.get_inf_resolver(self.wf_id).resolve(apenv=self.apenv,
-                                                               target=target,
+        properties = self.apenv.get(self.wf_id).get('inf')
+        return self.apenv.get_inf_resolver(self.wf_id).resolve(apenv=self.apenv, target=target,
                                                                properties=properties)
 
     def _build_task_groups(self):
@@ -99,7 +95,7 @@ class StackMapper(object):
         # after they are sorted
         ordered_role_groups.sort(cmp=_role_group_cmp)
         for role_group in ordered_role_groups:
-            properties = {}
+            properties = dict(stack_spec=self.stack_spec)
             # clear the roles list
             role_group.roles = []
             for roleref in role_group.rolerefs:
@@ -117,7 +113,7 @@ class StackMapper(object):
         # for parallel role groups we only need one task group
         parallel_tasks = []
         for role_group in parallel_role_groups:
-            properties = {}
+            properties = dict(stack_spec=self.stack_spec)
             # clear the roles list
             role_group.roles = []
             for roleref in role_group.rolerefs:

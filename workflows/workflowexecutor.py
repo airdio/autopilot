@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 from tornado import gen
+from autopilot.common.logger import wflog
 from autopilot.workflows.tasks.task import TaskState
 
 
@@ -41,6 +42,7 @@ class WorkflowExecutor(object):
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
+            wflog.info(wf_id=self.model.wf_id, msg="begin group execution: {0}".format(group.groupid))
             yield gen.Task(ec.run)
 
             # call on group finished callback handler
@@ -56,11 +58,13 @@ class WorkflowExecutor(object):
                 self.success = False
                 break
 
-            print "group done:{0}".format(group.groupid)
+            wflog.info(wf_id=self.model.wf_id, msg="finished group execution: {0}".format(group.groupid))
+
+        wflog.info(wf_id=self.model.wf_id, msg="finished workflow execution. Sucess: {0}".format(self.success))
 
         # if we have a wait event then signal it
         if wait_event:
-            print "Calling wait event"
+            wflog.info(wf_id=self.model.wf_id, msg="Signalling wait event")
             wait_event.set()
 
     @gen.engine

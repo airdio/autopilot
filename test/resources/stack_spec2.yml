@@ -12,18 +12,27 @@ apspec:
       order: 1
       instance:
         id: ami-a25415cb
-        type: m3.4xlarge
-        count: 5
+        type: m3.medium
+        count: 1
+        key_pair: ocg-test
+        routable: true
+        ports: [50070, 8032]
       roles: [hdfs, yarn]
     zk:
       instance:
         id: ami-a25415cb
-        type: m3.2xlarge
-        count: 3
+        type: m3.medium
+        count: 1
+        key_pair: ocg-test
+        routable: true
+        ports: [2181]
       roles: [zookeeper]
     monitoring:
       instance:
         id: ami-a25415cb
-        type: m3.2xlarge
+        type: m3.medium
         count: 1
+        key_pair: ocg-test
+        routable: true
+        ports: [7172]
       roles: [ganglia]

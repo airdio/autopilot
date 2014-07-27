@@ -19,10 +19,15 @@ class DeployRole(Task):
 
     def on_run(self, callback):
         """
+        1. Verifies we have the required materialized domain and stack specs
+        2. Checks if we have instances provisined for the role. If not first provision them
+        3. Call into ap agents on the images to deploy the the images
         """
-        # check what we have materilized in the workflow state (this is the stack state)
+        # check what we have materialized (what is already installed and running)
+        # in the workflow state.
         materialized_spec = self.workflow_state.get("stack_spec").get("materialized")
-        # todo: Handle the case when domains and stacks are not materialized. Throw exception
+        # todo: Handle the case when domains and stacks are not materialized.
+        # Throw exception
 
         mdomain_spec = materialized_spec.get("domain")
         mstack_spec = materialized_spec.get("stack")
@@ -34,32 +39,32 @@ class DeployRole(Task):
         target_role_group = self.properties.get("role_group")
         target_role_group_name = target_role_group.name
 
-        # check if we have materialized instances already created for this role_group
-        # if we don't then create instances first.
+        # if instances are not materialized then create instances first.
         if not mrole_groups or not mrole_groups.get(target_role_group_name):
-            uname = "{0}.{1}.{2}".format(self.properties.get('stack'), target_role_group_name,
-                                         materialized_spec.get("domain"))
-            # we don't have provisioned instances for this group
-            # ...so provision instances
-            auth_spec = []
-            for port in self.properties["network"]["ports"]:
-                auth_spec.append({"protocol": "tcp", "from": port, "to": port})
-                instance_spec = {}
-                instance_spec["uname"] = uname # unique name for this provision
-                instance_spec["auth_spec"] = auth_spec
-                instance_spec["associate_public_ip"] = self.properties["network"]["public_ip"]
-                instance_spec["instance_count"] = self.properties["instance_count"]
-                instance_spec["instance_type"] = self.properties["instance_type"]
-                instance_spec["image_id"] = self.properties["image_id"]
-                instance_spec["key_pair_name"] = self.properties["key_pair_name"]
-                rc_instances = self.inf.provision_instances(domain_spec=mdomain_spec, stack_spec=mstack_spec,
-                                                            instance_spec=instance_spec)
+            # todo: Throw exception if we do not have enough information in target_role_group
+            uname = "{0}_{1}".format(self.properties.get("stack_spec").domain, target_role_group_name)
+            instance_spec = dict(uname=uname)
 
-                # update materialized role groups
-                if not mrole_groups:
-                    mrole_groups = {}
-                    materialized_spec.update(dict(role_groups=mrole_groups))
-                mrole_groups[target_role_group_name] = rc_instances.spec
+            auth_spec = []
+            if target_role_group.instanced.get("ports"):
+                for port in target_role_group.instanced.get("ports"):
+                    auth_spec.append({"protocol": "tcp", "from": port, "to": port})
+            instance_spec["auth_spec"] = auth_spec
+            if target_role_group.instanced.get("routable"):
+                instance_spec["associate_public_ip"] = target_role_group.instanced.get("routable")
+
+            instance_spec["instance_count"] = target_role_group.instanced["count"]
+            instance_spec["instance_type"] = target_role_group.instanced["type"]
+            instance_spec["image_id"] = target_role_group.instanced["id"]
+            instance_spec["key_pair_name"] = target_role_group.instanced["key_pair"]
+            rc_instances = self.inf.provision_instances(domain_spec=mdomain_spec, stack_spec=mstack_spec,
+                                                        instance_spec=instance_spec)
+
+            # update materialized role groups
+            if not mrole_groups:
+                mrole_groups = {}
+                materialized_spec.update(dict(role_groups=mrole_groups))
+            mrole_groups[target_role_group_name] = rc_instances.spec
 
         # verify if agents are running on each instance
         self._verify_instance_agents()

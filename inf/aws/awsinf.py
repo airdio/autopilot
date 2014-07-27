@@ -145,8 +145,8 @@ class AWSInf(Inf):
         """
 
         # required parameters
-        vpc_id = Dct.get(domain_spec, "vpc_id")
-        subnet_id = Dct.get(stack_spec["subnets"][0], "subnet_id")
+        vpc_id = domain_spec.get("vpc_id")
+        subnet_id = stack_spec.get("subnets")[0]
         uname = Dct.get(instance_spec, "uname")
         image_id = Dct.get(instance_spec, "image_id")
         instance_type = Dct.get(instance_spec, "instance_type")
@@ -191,8 +191,8 @@ class AWSInf(Inf):
         instance_spec['instances'] = nspec
 
     def _get_ec2(self):
-        return awsutils.EasyEC2(aws_access_key_id = self.aws_access_key,
-                                aws_secret_access_key = self.aws_secret_key, aws_region_name="us-east-1")
+        return awsutils.EasyEC2(aws_access_key_id=self.aws_access_key,
+                                aws_secret_access_key=self.aws_secret_key, aws_region_name="us-east-1")
 
     def _get_vpc(self):
         return awsutils.EasyVPC(aws_access_key_id=self.aws_access_key,

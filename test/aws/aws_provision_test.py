@@ -141,12 +141,12 @@ class AwsProvisionTests(AWStest):
                 for task in group.tasks:
                     self.ae(TaskState.Done, task.result.state, "task should be in Done state")
 
+            role_groups = workflow_state.get("stack_spec").get("materialized").get("role_groups")
             for (key, role_group) in ex.workflow_state['role_groups'].items():
                 instances = [interface["instance_id"] for interface in role_group['instances']['interfaces']]
         finally:
             if instances:
                 self.terminate_instances(instances)
-            pass
 
     def get_DeployRole(self, apenv, inf, wf_id, properties, workflow_state):
         return DeployRole(apenv, wf_id, inf, properties, workflow_state)
