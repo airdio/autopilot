@@ -3,8 +3,6 @@
 import os
 import unittest
 import uuid
-import simplejson
-from autopilot.test.common.utils import Utils
 from autopilot.common.apenv import ApEnv
 from autopilot.common.asyncpool import taskpool
 from autopilot.inf.inrfresolver import InfResolver
@@ -63,3 +61,16 @@ class APtest(unittest.TestCase):
 
     def openf(self, path):
         return open(os.path.join(os.environ["AUTOPILOT_HOME"], "test/resources", path))
+
+    def rmdir(self, path):
+        import shutil
+        if os.path.exists(path):
+            shutil.rmtree(path)
+
+    def mkdir(self, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+    def resetdir(self, path):
+        self.rmdir(path)
+        self.mkdir(path)

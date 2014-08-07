@@ -1,5 +1,5 @@
 #! /usr/bin/python
-import simplejson
+import json
 from autopilot.workflows.tasks.group import Group, GroupSet
 
 
@@ -29,7 +29,7 @@ class WorkflowModel(object):
         """
         Loads a serialized workflow model
         """
-        modeld = simplejson.load(wf_spec_stream)
+        modeld = json.load(wf_spec_stream)
         wf_id = modeld.get("wf_id")
         type = modeld.get("type")
         target = modeld.get("target")

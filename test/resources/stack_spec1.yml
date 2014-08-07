@@ -14,10 +14,14 @@ apspec:
                 id: ami-a25415cb
                 type: m3.4xlarge
                 count: 5
+                tags:
+                    type: 1
             roles: [hdfs, yarn]
         zk:
             instance:
                 id: ami-a25415cb
                 type: m3.2xlarge
                 count: 3
+                routable: true
+                ports: [50070, 8032]
             roles: [zookeeper]

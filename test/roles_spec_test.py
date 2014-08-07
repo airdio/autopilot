@@ -3,7 +3,7 @@
 import os
 import os.path
 import sys
-import simplejson
+import json
 
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
 from autopilot.test.common.aptest import APtest
@@ -37,29 +37,26 @@ class RoleSpecTest(APtest):
         self.at(sspec.groups["hdfs"].rolerefs == ["hdfs", "yarn"])
         self.ae(1, sspec.groups["hdfs"].order)
         self.ae(5, sspec.groups["hdfs"].instanced['count'])
+        self.ae(1, len(sspec.groups["hdfs"].instanced["tags"]))
+        self.ae(2, len(sspec.groups["zk"].instanced["ports"]))
         self.ae(None, sspec.groups["zk"].order)
 
     def test_stack_mapper(self):
         rspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('role_spec2.yml'))
         sspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('stack_spec2.yml'))
         wf_id = self.get_unique_wf_id()
-        properties = dict(properties=dict(aws_access_key_id=os.environ["AWS_ACCESS_KEY"],
-                                          aws_secret_access_key=os.environ["AWS_SECRET_KEY"]))
-        infd = {'aws': properties}
-        apenv = self.get_default_apenv(wf_id=wf_id, infd=infd)
+        apenv = self.get_default_apenv(wf_id=wf_id)
         workflow_state = self.get_default_workflow_state()
         mapper = StackMapper(apenv=apenv, wf_id=wf_id, org="contoso.org", domain="dev.marketing.contoso.org",
                              owner="apuser", stack_spec=sspec, roles_spec=rspec,
                              stack_state=workflow_state)
         workflow = mapper.build_workflow()
-        # workflow.serialize()
-        # simplejson.dump(workflow.serialize(), open('/tmp/wf.sz', 'w'))
+        json.dump(workflow.serialize(), open('/tmp/wf.sz', 'w'))
         self.ae(4, len(workflow.groupset.groups))
         gp = filter(lambda g: g.groupid=="parallel_deploy_roles", workflow.groupset.groups).pop()
         self.ae(2, len(gp.tasks))
 
     def test_deploy_workflow(self):
-
         rspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('role_spec2.yml'))
         sspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('stack_spec2.yml'))
         wf_id = self.get_unique_wf_id()
@@ -79,7 +76,6 @@ class RoleSpecTest(APtest):
             pass
             #if ex:
             #    ex.inf.terminate_instances()
-
 
     def get_DeployRole(self, apenv, inf, wf_id, properties, workflow_state):
         return DeployRole(apenv, wf_id, inf, properties, workflow_state)

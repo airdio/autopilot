@@ -1,0 +1,13 @@
+# role spec for workflow
+
+apspec:
+    type: roles
+    org: contoso.com
+    domain: dev.marketing.contoso.com
+    roles:
+        hdfs:
+          version: 2.4
+          deploy:
+            git: https://github.com/opencognitions/fortestsonly.git
+            branch: master
+            script: testrun1.py

@@ -4,7 +4,6 @@ import os
 import os.path
 import sys
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
-import simplejson
 from autopilot.common.apenv import ApEnv
 from autopilot.test.common.aptest import APtest
 from autopilot.test.common.tasks import TouchfileTask, TouchfileFailTask

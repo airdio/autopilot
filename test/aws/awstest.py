@@ -1,12 +1,8 @@
 #! /usr/bin/python
 
 import os
-import unittest
-import simplejson
 from autopilot.common.sshutils import SSHClient
 from autopilot.common.asyncpool import taskpool
-from autopilot.common.apenv import ApEnv
-from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.inf.aws.awsinf import AWSInf
 from autopilot.inf.aws import awsutils
 from autopilot.test.common.aptest import APtest

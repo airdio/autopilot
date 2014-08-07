@@ -134,7 +134,7 @@ class AWSInf(Inf):
         """
         self.vpc_conn.delete_vpc(vpc_id=Dct.get(domain_spec, "vpc_id"), force=delete_dependencies)
 
-    def provision_instances(self, domain_spec, stack_spec, instance_spec={}, tags=[]):
+    def provision_instances(self, domain_spec, stack_spec, instance_spec={}):
         """
         We need a subnet in the the instance_spec
         1. Create default security group with inbound traffic for:
@@ -154,6 +154,7 @@ class AWSInf(Inf):
         instance_count = Dct.get(instance_spec, "instance_count")
         associate_public_ip = Dct.get(instance_spec, "associate_public_ip", False)
         auth_spec = Dct.get(instance_spec, "auth_spec")
+        tags = instance_spec.get('tags', {})
 
         # create a security group
         sg = self.ec2_conn.get_or_create_group("sg_{0}".format(uname),
@@ -168,7 +169,8 @@ class AWSInf(Inf):
                                                       max_count=instance_count,
                                                       security_group_ids=instance_spec["security_group_ids"],
                                                       subnet_id=subnet_id,
-                                                      associate_public_ip=associate_public_ip)
+                                                      associate_public_ip=associate_public_ip,
+                                                      tags=tags)
 
         # create a response context
         rc = AwsInfProvisionResponseContext(aws_inf=self, spec=instance_spec, reservation=reservation)
@@ -185,8 +187,10 @@ class AWSInf(Inf):
 
         for instance in instances:
             instance.update()
-            interfaces.append({'instance_id': instance.id, 'public_dns_name': instance.public_dns_name, 'private_dns_name': instance.private_dns_name,
-                               'public_ip_address': instance.ip_address, 'private_ip_address': instance.private_ip_address})
+            interfaces.append({'instance_id': instance.id, 'public_dns_name': instance.public_dns_name,
+                               'private_dns_name': instance.private_dns_name,
+                               'public_ip_address': instance.ip_address,
+                               'private_ip_address': instance.private_ip_address})
         nspec.update({'interfaces': interfaces})
         instance_spec['instances'] = nspec
 

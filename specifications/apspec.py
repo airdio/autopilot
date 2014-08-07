@@ -5,6 +5,8 @@ import yaml
 class Apspec(object):
     """
     Base class for ApSpec
+    todo: We should normalize the spec here into a canonical form
+    by replacing undefined values with defaults
     """
     def __init__(self, apenv, org, domain, type, inf=None, description=None):
         self.org = org

@@ -19,6 +19,7 @@
 
 
 import os
+import subprocess
 import re
 import sys
 import zlib
@@ -40,6 +41,12 @@ import decorator
 
 from autopilot.common.logger import log
 from autopilot.common import exception
+
+def subprocess_cmd(command, stdout=subprocess.PIPE):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    (out, error) = process.communicate()
+    retcode = process.wait()
+    return (retcode, out, error)
 
 def ipy_shell(local_ns=None):
     try:

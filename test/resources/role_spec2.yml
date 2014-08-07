@@ -10,19 +10,16 @@ apspec:
           deploy:
             git: https://www.github.com/contoso/marketing/hdfs
             branch: dev
-            start: start.sh
-            stop: stop.sh
+            script: run.py
         yarn:
           version: 2.0
           deploy:
             git: https://www.github.com/contoso/marketing/yarn
             branch: dev
-            start: start.sh
-            stop: stop.sh
+            script: run.py
         zookeeper:
           version: 2.0
           deploy:
             git: https://www.github.com/contoso/marketing/zk
             branch: dev
-            start: start.sh
-            stop: stop.sh
+            script: run.py

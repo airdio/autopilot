@@ -1,5 +1,6 @@
 #! /usr/bin python
 
+
 class ApEnv(object):
     """
     Collection of a roles environment metadata

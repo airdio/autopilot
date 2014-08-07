@@ -1,5 +1,4 @@
 #! /usr/bin/python
-from autopilot.common.utils import Dct
 from autopilot.workflows.tasks.task import Task, TaskResult, TaskState
 
 
@@ -57,6 +56,7 @@ class DeployRole(Task):
             instance_spec["instance_type"] = target_role_group.instanced["type"]
             instance_spec["image_id"] = target_role_group.instanced["id"]
             instance_spec["key_pair_name"] = target_role_group.instanced["key_pair"]
+            instance_spec["tags"] = target_role_group.instanced.get("tags", {})
             rc_instances = self.inf.provision_instances(domain_spec=mdomain_spec, stack_spec=mstack_spec,
                                                         instance_spec=instance_spec)
 

@@ -1,0 +1,22 @@
+# stack spec for hdfs
+
+apspec:
+  type: stack
+  infrastructure: aws
+  org: contoso.com
+  domain: dev.marketing.contoso.com
+  name: testrun1
+  description: "stack spec for testrun1"
+  role-groups:
+    hdfs:
+      order: 1
+      instance:
+        id: ami-a25415cb
+        type: m3.medium
+        count: 1
+        key_pair: ocg-test
+        routable: true
+        ports: [50070, 8032]
+        tags:
+          type: data_science
+      roles: [hdfs]

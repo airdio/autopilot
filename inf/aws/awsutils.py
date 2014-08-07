@@ -463,7 +463,7 @@ class EasyEC2(EasyAWS):
                           availability_zone_group=None, placement=None,
                           user_data=None, placement_group=None,
                           block_device_map=None, subnet_id=None,
-                          associate_public_ip=False):
+                          associate_public_ip=False, tags={}):
         """
         Convenience method for running spot or flat-rate instances
         """
@@ -504,7 +504,8 @@ class EasyEC2(EasyAWS):
                              user_data=user_data,
                              block_device_map=block_device_map,)
 
-        #  If we attach a network interface then set the subnet-id and security_group_ids for run_instance to None
+        #  If we attach a network interface then set the subnet-id and
+        #  security_group_ids for run_instance to None
         if associate_public_ip:
             network_interface = NetworkInterfaceSpecification(device_index=0, subnet_id=subnet_id,
                                                               groups=security_group_ids,
@@ -517,15 +518,24 @@ class EasyEC2(EasyAWS):
             shared_kwargs.update(subnet_id=subnet_id)
             shared_kwargs.update(security_group_ids=security_group_ids)
 
+        reservation = None
         if price:
-            return self.request_spot_instances(
+            reservation = self.request_spot_instances(
                 price, image_id,
                 count=max_count, launch_group=launch_group,
                 security_group_ids=security_group_ids,
                 availability_zone_group=availability_zone_group,
                 **shared_kwargs)
         else:
-            return self.conn.run_instances(image_id, **shared_kwargs)
+            reservation = self.conn.run_instances(image_id, **shared_kwargs)
+
+        # apply tags if given
+        if reservation and tags:
+            for instance in reservation.instances:
+                for (key, value) in tags.items():
+                    instance.add_tag(key, value)
+
+        return reservation
 
     def request_spot_instances(self, price, image_id, instance_type='m1.small',
                                count=1, launch_group=None, key_name=None,

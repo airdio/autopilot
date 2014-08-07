@@ -17,6 +17,8 @@ apspec:
         key_pair: ocg-test
         routable: true
         ports: [50070, 8032]
+        tags:
+          type: data_science
       roles: [hdfs, yarn]
     zk:
       instance:
@@ -26,6 +28,9 @@ apspec:
         key_pair: ocg-test
         routable: true
         ports: [2181]
+        tags:
+          target: global
+          ephemeral: true
       roles: [zookeeper]
     monitoring:
       instance:
