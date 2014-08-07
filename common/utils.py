@@ -555,6 +555,13 @@ def get_class(kls):
         m = getattr(m, comp)
     return m
 
+def rmtree(path):
+    import shutil
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+def mkdir(path):
+    os.mkdir(path)
 
 class Dct(object):
     """

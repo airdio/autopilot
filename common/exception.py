@@ -9,20 +9,35 @@ from autopilot.common.logger import log
 class AutopilotException(Exception):
     def __init__(self, *args, **kwargs):
         self.msg = args[0]
+        self.inner_exception = kwargs.get('inner_exception', None)
+        self.kwargs = kwargs
 
     def __str__(self):
-        return self.msg
+        d = dict(message=self.msg)
+        d.update(self.kwargs)
+        return str(d)
 
-    def explain(self):
-        return "%s: %s" % (self.__class__.__name__, self.msg)
 
-class AutopilotWorkflowException(AutopilotException):
+class WorkflowException(AutopilotException):
     """
     Base class for workflow related exceptions
     """
-    def __init__(self, msg, wf_id):
-        AutopilotException.__init__(self, msg)
+    def __init__(self, msg, wf_id, *args, **kwargs):
+        AutopilotException.__init__(self, msg, args, kwargs)
         self.wf_id = wf_id
+
+class AgentWorkflowException(WorkflowException):
+    """
+    Base class for workflow related exceptions
+    """
+    def __init__(self, msg, wf_id, *args, **kwargs):
+        AutopilotException.__init__(self, msg, wf_id, args, kwargs)
+
+
+class GitInstallProviderException(AutopilotException):
+    def __init__(self, msg, inner_exception=None):
+        AutopilotException.__init__(self, msg, inner_exception=inner_exception)
+
 
 class CommandNotFound(AutopilotException):
     """Raised when command is not found on the system's PATH """
