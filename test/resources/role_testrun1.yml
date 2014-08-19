@@ -10,4 +10,4 @@ apspec:
           deploy:
             git: https://github.com/opencognitions/fortestsonly.git
             branch: master
-            script: testrun1.py
+            script: dump_stack.py

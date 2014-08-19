@@ -11,6 +11,9 @@ from autopilot.apworker.tasks.InstallRole import InstallRole
 
 
 class Handler(object):
+    """
+    Entry point into handling incoming requests.
+    """
     def __init__(self, request):
         self.request = request
 
@@ -19,8 +22,12 @@ class Handler(object):
 
 
 class StackHandler(Handler):
+    """
+    Handle stack install
+    """
     def __init__(self, request):
         Handler.__init__(self, request)
 
     def process(self):
+        pass
 

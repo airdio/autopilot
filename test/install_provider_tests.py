@@ -29,12 +29,32 @@ class InstallProviderTest(APtest):
         apenv.add("stack", stack)
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
                                  "hdfs", "stack1", working_dir)
-        git.run()
+        print git.run(synchronous=True, timeout=10)
+
+        with open(os.path.join(working_dir, 'dump_stack.out')) as f:
+            o = json.load(f)
+            self.at(o)
+            self.at(o["org"])
+            self.at(o["type"])
 
     def test_clone_fail(self):
         (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
                                             sspec_file='stack_testrun1.yml')
 
+        working_dir = '/tmp/ap_testrun1'
+        self.resetdir(working_dir)
+        apenv = ApEnv()
+        apenv.add("target", "unittest1_role")
+        apenv.add("stack", stack)
+        rspec.roles['hdfs'].deploy['git'] = "https//bad_url"
+        git = GitInstallProvider(apenv, rspec.roles['hdfs'],
+                                 "hdfs", "stack1", working_dir)
+        self.assertRaises(exception.GitInstallProviderException, git.run)
+
+    def _test_run_module_fail(self):
+        os.environ['AP_TEST_FAIL'] = True
+        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
+                                            sspec_file='stack_testrun1.yml')
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()

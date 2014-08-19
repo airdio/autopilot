@@ -46,6 +46,5 @@ class InstallRole(Task):
                                            self.stack_spec.name, working_dir)
             return installer.run()
 
-
     def _update_current_role_config(self, role):
         pass
