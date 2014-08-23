@@ -1,21 +1,5 @@
 #! /usr/bin python
-
-# Copyright 2009-2013 Justin Riley
-#
-# This file is part of StarCluster.
-#
-# StarCluster is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Lesser General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version.
-#
-# StarCluster is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with StarCluster. If not, see <http://www.gnu.org/licenses/>.
+# Lot of code is imported from MIT Starcluster
 
 
 import os
@@ -41,13 +25,43 @@ import decorator
 
 from autopilot.common.logger import log
 from autopilot.common import exception
+from autopilot.common.asyncpool import taskpool
 
 
-def subprocess_cmd(command, stdout=subprocess.PIPE, working_dir=None):
-    process = subprocess.Popen(command, stdout=stdout, stderr=stdout, shell=True, cwd=working_dir)
+def subprocess_cmd(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                   working_dir=None, blocking=True, max_tries=12, interval=5):
+    """
+    Launches a process using subprocess module
+    if blocking is False then polls for process status via gevent yield
+    """
+    def _inner_async_poll_process_completion(process, max_tries=30, interval=2):
+        ret_code = process.poll()
+        tries = 1
+        while ret_code is None and tries < max_tries:
+            taskpool.doyield(interval)
+            ret_code = process.poll()
+            tries += 1
+
+        if ret_code is None:
+            try:
+                # timeout terminate the process
+                process.terminate()
+            except Exception as ex:
+                pass
+
+            return (-9999, None, "Install process terminated since we timed out")
+
+        # we either succeeded or failed but the process did terminate gracefully
+        (out, error) = process.communicate()
+        return (ret_code, out, error)
+
+    process = subprocess.Popen(command, stdout=stdout, stderr=stderr, shell=True, cwd=working_dir)
+    if not blocking:
+        return _inner_async_poll_process_completion(process, max_tries=max_tries, interval=interval)
     (out, error) = process.communicate()
     retcode = process.wait()
     return (retcode, out, error)
+
 
 def ipy_shell(local_ns=None):
     try:

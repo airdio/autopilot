@@ -3,12 +3,14 @@
 import os
 import unittest
 import uuid
+from autopilot.common import utils
 from autopilot.common.apenv import ApEnv
 from autopilot.common.asyncpool import taskpool
 from autopilot.inf.inrfresolver import InfResolver
 from autopilot.workflows.tasks.taskresolver import TaskResolver
 from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
+
 
 class APtest(unittest.TestCase):
     """ Base class for all autopilot unit tests
@@ -74,3 +76,10 @@ class APtest(unittest.TestCase):
     def resetdir(self, path):
         self.rmdir(path)
         self.mkdir(path)
+
+    class TimeClass():
+            def __init__(self):
+                self.func_time = 0
+
+            def update_time(self):
+                self.func_time = utils.get_utc_now_seconds()
