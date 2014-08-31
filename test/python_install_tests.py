@@ -15,13 +15,14 @@ from autopilot.specifications.apspec import Apspec
 from autopilot.apworker.installers.InstallProviders import GitInstallProvider
 from autopilot.common.asyncpool import taskpool
 
-class InstallProviderTest(APtest):
+
+class PythonInstallProviderTest(APtest):
     """
     Role Spec tests
     """
     def test_clone_install(self):
-        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
-                                            sspec_file='stack_testrun1.yml')
+        (rspec, stack) = self._create_specs(rspec_file='role_test_python.yml',
+                                            sspec_file='stack_test_python.yml')
 
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
@@ -39,9 +40,9 @@ class InstallProviderTest(APtest):
             self.at(o["type"])
 
     def test_clone__install_async(self):
-        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
-                                            sspec_file='stack_testrun1.yml')
-        tc = InstallProviderTest.TimeClass()
+        (rspec, stack) = self._create_specs(rspec_file='role_test_python.yml',
+                                            sspec_file='stack_test_python.yml')
+        tc = PythonInstallProviderTest.TimeClass()
 
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
@@ -64,8 +65,8 @@ class InstallProviderTest(APtest):
             self.at(o["type"])
 
     def test_clone_fail(self):
-        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
-                                            sspec_file='stack_testrun1.yml')
+        (rspec, stack) = self._create_specs(rspec_file='role_test_python.yml',
+                                            sspec_file='stack_test_python.yml')
 
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
@@ -78,8 +79,8 @@ class InstallProviderTest(APtest):
         self.assertRaises(exception.GitInstallProviderException, git.run)
 
     def test_install_fail(self):
-        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
-                                            sspec_file='stack_testrun1.yml')
+        (rspec, stack) = self._create_specs(rspec_file='role_test_python.yml',
+                                            sspec_file='stack_test_python.yml')
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
@@ -91,8 +92,8 @@ class InstallProviderTest(APtest):
         self.assertRaises(exception.GitInstallProviderException, git.run)
 
     def test_install_bad_module(self):
-        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
-                                            sspec_file='stack_testrun1.yml')
+        (rspec, stack) = self._create_specs(rspec_file='role_test_python.yml',
+                                            sspec_file='stack_test_python.yml')
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
@@ -104,8 +105,8 @@ class InstallProviderTest(APtest):
         self.assertRaises(exception.GitInstallProviderException, git.run)
 
     def test_install_bad_module_async(self):
-        (rspec, stack) = self._create_specs(rspec_file='role_testrun1.yml',
-                                            sspec_file='stack_testrun1.yml')
+        (rspec, stack) = self._create_specs(rspec_file='role_test_python.yml',
+                                            sspec_file='stack_test_python.yml')
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
@@ -115,7 +116,7 @@ class InstallProviderTest(APtest):
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
                                  "hdfs", "stack1", working_dir)
 
-        tc = InstallProviderTest.TimeClass()
+        tc = PythonInstallProviderTest.TimeClass()
         taskpool.spawn(self.assertRaises, args=dict(excClass=exception.GitInstallProviderException,
                                                     callableObj=git.run))
         taskpool.spawn(tc.update_time)

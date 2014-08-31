@@ -5,9 +5,9 @@ from autopilot.common import utils
 from autopilot.common import exception
 
 
-class GitInstallProvider(object):
+class InstallProvider(object):
     """
-    Git install provider
+    InstallProvider Base class
     """
     def __init__(self, apenv, role, role_group_name, stack_name, working_dir):
         self.apenv = apenv
@@ -15,6 +15,14 @@ class GitInstallProvider(object):
         self.working_dir = working_dir
         self.stack_name = stack_name
         self.role_group_name = role_group_name
+
+
+class GitInstallProvider(InstallProvider):
+    """
+    Git install provider
+    """
+    def __init__(self, apenv, role, role_group_name, stack_name, working_dir):
+         InstallProvider.__init__(self, apenv, role, role_group_name, stack_name, working_dir)
 
     def run(self, blocking=True, timeout=120):
         git_url = self.role.deploy.get('git')
@@ -42,10 +50,35 @@ class GitInstallProvider(object):
         return json.dumps(d)
 
     def _install(self, blocking, timeout):
-        return SafePythonModuleRunner().run(ap_env_json=self._build_env(),
-                                            working_dir=self.working_dir,
-                                            module_name=os.path.splitext(self.role.deploy.get('script'))[0],
-                                            blocking=blocking, timeout=timeout)
+        script_file = self.role.deploy.get('script')
+        module_name, extension = os.path.splitext(script_file)
+
+        if extension == ".py":
+            return SafePythonModuleRunner().run(ap_env_json=self._build_env(),
+                                                working_dir=self.working_dir,
+                                                module_name=module_name,
+                                                blocking=blocking, timeout=timeout)
+        else:
+            # assume some executable
+            # todo: may not be safe
+            return SafeShellModuleRunner().run(ap_env_json=self._build_env(),
+                                               working_dir=self.working_dir,
+                                               module_name=script_file,
+                                               blocking=blocking, timeout=timeout)
+
+
+class SafeShellModuleRunner(object):
+    """
+    Loads user provider shell script in a different process and runs
+    desired actions
+    """
+    def run(self, ap_env_json, working_dir, module_name, blocking=True, timeout=None):
+        env_tmp_file = os.path.join(working_dir, 'apenv.json')
+        with open(env_tmp_file, 'w') as f:
+            f.write(ap_env_json)
+            f.write("\n")
+        command = "./" + module_name
+        return utils.subprocess_cmd(command, working_dir=working_dir, blocking=blocking)
 
 
 class SafePythonModuleRunner(object):
