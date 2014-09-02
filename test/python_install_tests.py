@@ -22,7 +22,8 @@ class PythonInstallProviderTest(APtest):
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
-        apenv.add("target", "unittest1_role")
+        apenv.add("target_role_group", "hdfs")
+        apenv.add("target_role", "hdfs")
         apenv.add("stack", stack)
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
                                  "hdfs", stack, working_dir)
@@ -42,7 +43,8 @@ class PythonInstallProviderTest(APtest):
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
-        apenv.add("target", "unittest1_role")
+        apenv.add("target_role_group", "hdfs")
+        apenv.add("target_role", "hdfs")
         apenv.add("stack", stack)
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
                                  "hdfs", stack, working_dir)
@@ -66,7 +68,8 @@ class PythonInstallProviderTest(APtest):
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
-        apenv.add("target", "unittest1_role")
+        apenv.add("target_role_group", "hdfs")
+        apenv.add("target_role", "hdfs")
         apenv.add("stack", stack)
         rspec.roles['hdfs'].deploy['git'] = "https//bad_url"
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
@@ -79,7 +82,8 @@ class PythonInstallProviderTest(APtest):
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
-        apenv.add("target", "unittest1_role")
+        apenv.add("target_role_group", "hdfs")
+        apenv.add("target_role", "hdfs")
         apenv.add("stack", stack)
         rspec.roles['hdfs'].deploy['script'] = "raise_error.py"
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
@@ -92,7 +96,8 @@ class PythonInstallProviderTest(APtest):
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
-        apenv.add("target", "unittest1_role")
+        apenv.add("target_role_group", "hdfs")
+        apenv.add("target_role", "hdfs")
         apenv.add("stack", stack)
         rspec.roles['hdfs'].deploy['script'] = "bad_module.py"
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],
@@ -105,7 +110,8 @@ class PythonInstallProviderTest(APtest):
         working_dir = '/tmp/ap_testrun1'
         self.resetdir(working_dir)
         apenv = ApEnv()
-        apenv.add("target", "unittest1_role")
+        apenv.add("target_role_group", "hdfs")
+        apenv.add("target_role", "hdfs")
         apenv.add("stack", stack)
         rspec.roles['hdfs'].deploy['script'] = "bad_module.py"
         git = GitInstallProvider(apenv, rspec.roles['hdfs'],

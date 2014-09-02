@@ -21,12 +21,13 @@ class InstallRoleTest(APtest):
     Install Role task tests
     """
     def test_install_role_task(self):
-        stack = self.create_specs(rspec_file='role_test_python.yml',
-                                   sspec_file='stack_test_python.yml')
+        rspec, stack = self.create_specs(rspec_file='role_test_python.yml',
+                                         sspec_file='stack_test_python.yml')
         test_dir = '/tmp/test_install_role_task/'
         properties = {
-            "target": "hdfs",
             "stack": stack,
+            "target_role_group": "hdfs",
+            "target_role": stack.groups.get("hdfs").roles[0],
             "install_dirs": {
                 "root_dir": test_dir,
                 "current_file": "current",
@@ -42,5 +43,5 @@ class InstallRoleTest(APtest):
         with open(os.path.join(working_dir, 'dump_stack.out')) as f:
             o = json.load(f)
             self.at(o)
-            # self.at(o["org"])
-            # self.at(o["type"])
+            self.at(o["role_groups"])
+            self.at(o["target"])
