@@ -1,12 +1,13 @@
 #! /usr/bin/python
-from autopilot.apworker.tasks.InstallRole import InstallRole
+from autopilot.agent.tasks.InstallRole import InstallRole
 
 # {
 # "type": "stack",
-# "target": "role_group1"
+# "target": "role_group1",
 # "stack": {
-# "stack_spec": {},
-# "materialized": {"domain":{}, "stack":{}, "role_groups": {}},
+#   "name": "mystack",
+#   "role_groups": {},
+#   }
 # }
 
 
@@ -30,4 +31,9 @@ class StackHandler(Handler):
 
     def process(self):
         pass
+
+Name = "InstallRole"
+ROOT_DIR = "/var/lib/autopilot/"
+CURRENT_FILE = "current"
+VERSIONS_DIR = "versions"
 

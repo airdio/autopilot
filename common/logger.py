@@ -41,19 +41,19 @@ class WfLogger(object):
         self.logger = aplogger
 
     def debug(self, msg, wf_id=None, exc_info=False):
-        pass
+        self.logger.debug("Workflow", self._format_msg(wf_id, msg), exc_info=exc_info)
 
     def info(self, msg, wf_id):
         self.logger.info("Workflow", self._format_msg(wf_id, msg))
 
     def warning(self, msg, wf_id=None, exc_info=False):
-        pass
+        self.logger.warning("Workflow", self._format_msg(wf_id, msg), exc_info=exc_info)
 
     def error(self, msg, wf_id=None, exc_info=True):
-        pass
+        self.logger.error("Workflow", self._format_msg(wf_id, msg), exc_info=exc_info)
 
     def critical(self, msg, wf_id=None, exc_info=True):
-        pass
+        self.logger.critical("Workflow", self._format_msg(wf_id, msg), exc_info=exc_info)
 
     def _format_msg(self, wf_id, msg):
         return dict(wf_id=wf_id, msg=msg)

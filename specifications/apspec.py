@@ -86,7 +86,11 @@ class Stackspec(Apspec):
         self.groups = self._resolve_role_groups(groupsd)
 
     def serialize(self):
-        return dict(name=self.name)
+        rd = dict()
+        for k, g in self.groups.items():
+            rd[k] = g.serialize()
+        return dict(name=self.name,
+                    role_groups=rd)
 
     def _resolve_role_groups(self, groupsd):
         rg = {}

@@ -130,7 +130,7 @@ class AwsProvisionTests(AWStest):
                 #self.delete_vpc(rc_instances.spec)
 
     def test_deploy_role(self):
-        workflow_state = self.get_default_workflow_state()
+        workflow_state = self.get_aws_default_workflow_state()
         (model, ex) = self.get_default_model("stack_deploy1.wf", workflow_state=workflow_state)
         instances = None
         try:

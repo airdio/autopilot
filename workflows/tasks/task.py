@@ -12,6 +12,7 @@ class TaskState(object):
     Error = 2
     Done = 3
     Rolledback = 4
+    RolledbackError = 5
 
 
 class TaskResult(object):
@@ -60,11 +61,8 @@ class Task(object):
         return dict(name=self.name, properties={})
 
     # don't override this. Override process_run
-    def run(self, callback):
+    def run(self, callback=None):
         self.starttime = utils.get_utc_now_seconds()
-        if callback is None:
-            # todo exceptions
-            raise Exception("Argument callback required")
         if self.result.state is not TaskState.Initialized:
             # todo exceptions
             raise Exception("Task {0} is not in Initialized state. State: {1}".format(self.name, self.result.state))
@@ -75,7 +73,11 @@ class Task(object):
         self.result.update(TaskState.Started, ["Task {0} Started".format(self.name)])
 
         wflog.info(wf_id=self.wf_id, msg="begin task run: {0}".format(self.name))
-        self.on_run(self._on_run_callback)
+        try:
+            self.on_run(self._on_run_callback)
+        except Exception as ex:
+            wflog.error(wf_id=self.wf_id, msg="Error executing task: {0}".format(self.name), exc_info=ex)
+            self._on_rollback_callback(TaskState.Error, [], [ex])
 
     # don't override this. Override process_rollback
     def rollback(self, callback):
@@ -90,7 +92,11 @@ class Task(object):
         self.result.update(TaskState.Rolledback, ["Task {0} Started".format(self.name)])
 
         wflog.info(wf_id=self.wf_id, msg="begin task rollback: {0}".format(self.name))
-        self.on_rollback(self._on_rollback_callback)
+        try:
+            self.on_rollback(self._on_rollback_callback)
+        except Exception as ex:
+            wflog.error(wf_id=self.wf_id, msg="Error rolling back task: {0}".format(self.name), exc_info=ex)
+            self._on_rollback_callback(TaskState.RolledbackError, [], [ex])
 
     # override in derived class
     def on_run(self, callback):
@@ -106,14 +112,16 @@ class Task(object):
         self.result.update(final_state, messages, exceptions)
         self._finalize()
         # original callback
-        self.finalcallback(self)
+        if self.finalcallback:
+            self.finalcallback(self)
 
     def _on_rollback_callback(self, final_state, messages=[], exceptions=[]):
         self.result.update(final_state, messages, exceptions)
         self._finalize()
 
         # call the original callback
-        self.finalcallback(self)
+        if self.finalcallback:
+            self.finalcallback(self)
 
     # base class helper method to finalize this task
     def _finalize(self):

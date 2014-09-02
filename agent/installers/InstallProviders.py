@@ -10,11 +10,11 @@ class InstallProvider(object):
     """
     InstallProvider Base class
     """
-    def __init__(self, apenv, role, role_group_name, stack_name, working_dir):
+    def __init__(self, apenv, role, role_group_name, stack_spec, working_dir):
         self.apenv = apenv
         self.role = role
         self.working_dir = working_dir
-        self.stack_name = stack_name
+        self.stack_spec = stack_spec
         self.role_group_name = role_group_name
 
 
@@ -23,8 +23,8 @@ class GitInstallProvider(InstallProvider):
     Git install provider
     """
     LOG_SOURCE = "GitInstallProvider"
-    def __init__(self, apenv, role, role_group_name, stack_name, working_dir):
-         InstallProvider.__init__(self, apenv, role, role_group_name, stack_name, working_dir)
+    def __init__(self, apenv, role, role_group_name, stack_spec, working_dir):
+         InstallProvider.__init__(self, apenv, role, role_group_name, stack_spec, working_dir)
 
     def run(self, blocking=True, timeout=120):
         git_url = self.role.deploy.get('git')
@@ -35,7 +35,8 @@ class GitInstallProvider(InstallProvider):
         (return_code, out, error) = utils.subprocess_cmd(git_command, blocking=blocking)
         if return_code:
             log.error(GitInstallProvider.LOG_SOURCE, "Error cloning: Return Code: {0}. Error: {1}".format(return_code, error))
-            raise exception.GitInstallProviderException("git clone failed: Command: {0} Return Code: {1} Error: {2}".format(git_command, return_code, error))
+            raise exception.GitInstallProviderException("git clone failed: Command: {0} Return Code: {1} Error: {2}"
+                                                        .format(git_command, return_code, error))
 
         (return_code, out, error) = self._install(blocking=blocking, timeout=timeout)
         if return_code:
@@ -52,8 +53,8 @@ class GitInstallProvider(InstallProvider):
 
     def _build_env(self):
         d = dict(target=self.role.name, working_dir=self.working_dir)
-        d.update(self.apenv.get("stack").get("stack_spec").todict())
-        d.update(materialized=self.apenv.get("stack").get("materialized"))
+        d.update(self.stack_spec.serialize())
+        d.update(materialized=None)
         return json.dumps(d)
 
     def _install(self, blocking, timeout):

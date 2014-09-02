@@ -576,7 +576,14 @@ def rmtree(path):
         shutil.rmtree(path)
 
 def mkdir(path):
-    os.mkdir(path)
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def path_join(path, *paths):
+    return os.path.join(path, *paths)
+
+def path_exists(path):
+    return os.path.exists(path)
 
 class Dct(object):
     """

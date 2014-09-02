@@ -45,8 +45,8 @@ class RoleSpecTest(APtest):
         rspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('role_spec2.yml'))
         sspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('stack_spec2.yml'))
         wf_id = self.get_unique_wf_id()
-        apenv = self.get_default_apenv(wf_id=wf_id)
-        workflow_state = self.get_default_workflow_state()
+        apenv = self.get_aws_default_apenv(wf_id=wf_id)
+        workflow_state = self.get_aws_default_workflow_state()
         mapper = StackMapper(apenv=apenv, wf_id=wf_id, org="contoso.org", domain="dev.marketing.contoso.org",
                              owner="apuser", stack_spec=sspec, roles_spec=rspec,
                              stack_state=workflow_state)
@@ -60,8 +60,8 @@ class RoleSpecTest(APtest):
         rspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('role_spec2.yml'))
         sspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf('stack_spec2.yml'))
         wf_id = self.get_unique_wf_id()
-        apenv = self.get_default_apenv(wf_id=wf_id)
-        workflow_state = self.get_default_workflow_state()
+        apenv = self.get_aws_default_apenv(wf_id=wf_id)
+        workflow_state = self.get_aws_default_workflow_state()
         mapper = StackMapper(apenv=apenv, wf_id=wf_id, org="contoso.org", domain="dev.marketing.contoso.org",
                              owner="apuser", stack_spec=sspec, roles_spec=rspec,
                              stack_state=workflow_state)
