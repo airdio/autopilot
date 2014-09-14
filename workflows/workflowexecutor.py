@@ -19,20 +19,26 @@ class WorkflowExecutor(object):
         self.executed_groups = []
         self.success = True
         self.executed = False
+        self.value = self
 
-    def execute(self, callback=None, wait_event=None):
+    def execute(self, callback=None):
         """
-        :type wait_event: gevent.event.AsyncResult
-        :param wait_event: Signals the event on completion of the workflow
+        :type: callable
+        :param Any callable. Will be called when process completes
         """
         if self.executed:
             raise Exception("Execution of a workflow is only allowed once")
         self.executed = True
-        self._execute_groups(callback=callback, wait_event=wait_event)
+        self._execute_groups(callback=callback)
 
+    def successful(self):
+        """
+        Hook to make callback work is its gevent.Asyncresult
+        """
+        return True
 
     @gen.engine
-    def _execute_groups(self, callback=None, wait_event=None):
+    def _execute_groups(self, callback=None):
         """
         Groups are always executed in a serial fashion.
         Individual tasks within groups maybe executed in parallel
@@ -66,13 +72,9 @@ class WorkflowExecutor(object):
 
         wflog.info(wf_id=self.model.wf_id, msg="finished workflow execution. Sucess: {0}".format(self.success))
 
-        # if we have a wait event then signal it
-        if wait_event:
-            wflog.info(wf_id=self.model.wf_id, msg="Signalling wait event")
-            wait_event.set(value=self)
-
-        # if we have a callback signal it too.
+        # if we have a callback signal it.
         if callback:
+            wflog.info(wf_id=self.model.wf_id, msg="Signalling callback")
             callback(self)
 
     @gen.engine
@@ -83,7 +85,7 @@ class WorkflowExecutor(object):
         for g in self.executed_groups[::-1]:
             yield gen.Task(g.rewind)
 
-    def all_tasks_succeeded(self):
+    def _all_tasks_succeeded(self):
         for group in self.model.taskgroups:
             if not self._check_group_success(group):
                 return False

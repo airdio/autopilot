@@ -226,7 +226,7 @@ class InstallRoleTest(APtest):
 
         handler = StackDeployHandler(apenv=apenv, message=msg)
         wait_event = taskpool.new_event()
-        handler.process(wait_event=wait_event)
+        handler.process(callback=wait_event)
         ex = wait_event.get(timeout=30)
         current_file_path = os.path.join(test_dir, stack.name, "hdfs", "hdfs", "current")
         self.at(ex.success, "Executor.success should be true")

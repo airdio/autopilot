@@ -11,15 +11,14 @@ class Handler(object):
     """
     Entry point into handling incoming requests.
     """
-    def __init__(self, apenv, message, callback=None):
+    def __init__(self, apenv, message):
         self.apenv = apenv
         self.type = message.type
         self.headers = message.headers
         self.data = message.data
         self.message = message
-        self.callback = callback
 
-    def process(self):
+    def process(self, callback=None):
         pass
 
 
@@ -27,19 +26,17 @@ class StackDeployHandler(Handler):
     """
     Handle stack install
     """
-    def __init__(self, apenv, message, callback=None):
-        Handler.__init__(self, apenv, message, callback=callback)
+    def __init__(self, apenv, message):
+        Handler.__init__(self, apenv, message)
         self.response = Message(type="stack_deploy_response", headers={}, data=None)
+        self.callback = None
 
-    def process(self, wait_event=None):
+    def process(self, callback=None):
         """
         Process the stack deployment message
 
         :type: callable
         :param Any callable. Will be called when process completes
-
-        :type: gevent.event.Event
-        :param The :class:`gevent.event.Event` which will get signalled when the workflow completes. Test hook
         """
         stack = self.data.get("stack")
         role_group = self.data.get("target_role_group")
@@ -73,9 +70,12 @@ class StackDeployHandler(Handler):
                               groupset=GroupSet([Group(wf_id=wf_id, apenv=self.apenv, groupid="install_agent_roles", tasks=tasks)]),
                               workflow_state=initial_workflow_state)
 
+        if callback:
+            self.callback = callback
         ex = WorkflowExecutor(apenv=self.apenv, model=model)
-        ex.execute(callback=self._executor_callback, wait_event=wait_event)
+        ex.execute(callback=self._executor_callback)
 
     def _executor_callback(self, executor):
-        pass
+        if self.callback:
+            self.callback(executor)
 
