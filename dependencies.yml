@@ -13,7 +13,7 @@ worker/agent:
     - paramiko==1.13
     - requests
     - Git
-    -
+    - jsonpickle(0.8.0)
 
 auth:
 

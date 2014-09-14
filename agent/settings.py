@@ -1,7 +1,8 @@
-#! /usr/bin/rnv python
+#! /usr/bin python
 
 import os
 import sys
 
-sys.path.append(os.getcwd())
-
+ROOT_DIR = "/var/lib/autopilot/stacks/"
+CURRENT_FILE = "current"
+VERSIONS_DIR = "versions"

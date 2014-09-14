@@ -17,7 +17,7 @@ class GeventPool(object):
         self.pool = pool.Pool(self.capacity)
 
     def new_event(self):
-        return gevent.event.Event()
+        return gevent.event.AsyncResult()
 
     def spawn(self, func, args={}, callback=None, delay=0):
         """

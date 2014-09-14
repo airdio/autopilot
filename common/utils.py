@@ -576,7 +576,7 @@ def rmtree(path):
         shutil.rmtree(path)
 
 def mkdir(path):
-    if not os.path.exists(path):
+    if not path_exists(path):
         os.makedirs(path)
 
 def path_join(path, *paths):

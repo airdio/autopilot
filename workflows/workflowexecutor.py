@@ -20,15 +20,19 @@ class WorkflowExecutor(object):
         self.success = True
         self.executed = False
 
-    def execute(self, wait_event=None):
+    def execute(self, callback=None, wait_event=None):
+        """
+        :type wait_event: gevent.event.AsyncResult
+        :param wait_event: Signals the event on completion of the workflow
+        """
         if self.executed:
             raise Exception("Execution of a workflow is only allowed once")
         self.executed = True
-        self._execute_groups(wait_event=wait_event)
+        self._execute_groups(callback=callback, wait_event=wait_event)
 
 
     @gen.engine
-    def _execute_groups(self, wait_event=None):
+    def _execute_groups(self, callback=None, wait_event=None):
         """
         Groups are always executed in a serial fashion.
         Individual tasks within groups maybe executed in parallel
@@ -65,7 +69,11 @@ class WorkflowExecutor(object):
         # if we have a wait event then signal it
         if wait_event:
             wflog.info(wf_id=self.model.wf_id, msg="Signalling wait event")
-            wait_event.set()
+            wait_event.set(value=self)
+
+        # if we have a callback signal it too.
+        if callback:
+            callback(self)
 
     @gen.engine
     def rollback(self):

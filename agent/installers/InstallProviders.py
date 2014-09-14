@@ -17,7 +17,6 @@ class InstallProvider(object):
         self.stack_spec = stack_spec
         self.role_group_name = role_group_name
 
-
 class GitInstallProvider(InstallProvider):
     """
     Git install provider

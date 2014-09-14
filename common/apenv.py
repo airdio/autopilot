@@ -3,7 +3,7 @@
 
 class ApEnv(object):
     """
-    Collection of a roles environment metadata
+    Enviroment settings
     """
     def __init__(self, envd={}):
         self.env = envd.copy()

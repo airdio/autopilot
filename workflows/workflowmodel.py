@@ -1,4 +1,5 @@
 #! /usr/bin/python
+import uuid
 import json
 from autopilot.workflows.tasks.group import Group, GroupSet
 
@@ -71,3 +72,7 @@ class WorkflowModel(object):
             tasks.append(task_resolver.resolve(taskd.get("name"), apenv, wf_id,
                                                inf, taskd.get("properties"), workflow_state))
         return Group(wf_id, apenv, groupid, tasks)
+
+    @staticmethod
+    def get_next_workflow_id(domain, owner):
+        return "{0}-{1}-{2}".format(domain, owner, str(uuid.uuid4())[:8])

@@ -2,7 +2,6 @@
 import uuid
 from autopilot.common import utils
 from autopilot.workflows.tasks.group import Group, GroupSet
-from autopilot.workflows.tasks.task import Task
 from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.specifications.tasks.deployrole import DomainInit, StackInit, DeployRole
 

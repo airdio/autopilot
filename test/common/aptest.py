@@ -64,7 +64,6 @@ class APtest(unittest.TestCase):
     def execute_workflow(self, executor, timeout=10):
         wait_event = taskpool.new_event()
         executor.execute(wait_event=wait_event)
-        print "Waiting for event to signal"
         wait_event.wait(timeout=timeout)
 
     def create_specs(self, rspec_file, sspec_file):
@@ -91,6 +90,9 @@ class APtest(unittest.TestCase):
     def mkdir(self, path):
         if not os.path.exists(path):
             os.mkdir(path)
+
+    def listfiles(self, path):
+        return os.listdir(path)
 
     def resetdir(self, path):
         self.rmdir(path)

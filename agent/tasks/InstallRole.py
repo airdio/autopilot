@@ -10,8 +10,9 @@ from autopilot.agent.installers.InstallProviders import GitInstallProvider
 class InstallRole(Task):
     """
     Install the role on this machine
+    This is called by the the ap agent running on a vm/container.
     """
-    Name = "Autopilot.Agent.InstallRole"
+    Name = "InstallRole"
 
     def __init__(self, apenv, wf_id, inf, properties, workflow_state):
         Task.__init__(self, apenv, InstallRole.Name, wf_id, inf, properties, workflow_state)
@@ -41,9 +42,10 @@ class InstallRole(Task):
         # Install the role
         # either we are updating to another version or we are installing this role for the first time
         working_dir = utils.path_join(self.root_dir, self.stack_name, self.target_role_group,
-                                      self.target_role.name, self.versions_dir, str(self.target_role.version))
+                                      self.target_role.name, self.versions_dir, str(self.target_role.version) + "/")
         try:
             self._install_role(working_dir, self.target_role)
+            self._update_current_role_config(self.target_role)
         except AutopilotException as ex:
             wflog.error("InstallRole raised error", wf_id=self.wf_id, exc_info=ex)
             error = ex
@@ -79,4 +81,4 @@ class InstallRole(Task):
         current_file_path = utils.path_join(self.root_dir, self.stack_name,
                                             self.target_role_group, role.name, self.current_file)
         with open(current_file_path, 'w') as f:
-            f.write(role.version)
+            f.write(str(role.version))
