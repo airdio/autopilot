@@ -9,10 +9,9 @@ class WorkflowExecutor(object):
     """
     Executes a given workflow and manages its life cycle
     """
-    def __init__(self, apenv, model, on_group_finished=None):
+    def __init__(self, apenv, model):
         self.apenv = apenv
         self.model = model
-        self.on_group_finished = on_group_finished
         self.workflow_state = model.workflow_state
         self.inf = model.inf
         self.groupset = model.groupset
@@ -49,16 +48,12 @@ class WorkflowExecutor(object):
             # execution of tasks within the group is parallel
             ec = group.get_execution_context()
             self.executed_groups.append(ec)
+
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
             wflog.info(wf_id=self.model.wf_id, msg="begin group execution: {0}".format(group.groupid))
             yield gen.Task(ec.run)
-
-            # call on group finished callback handler
-            # so that the caller can handle new state created
-            if self.on_group_finished:
-                self.on_group_finished(group)
 
             if not self._check_group_success(group):
                 # if this group failed we will not execute the
@@ -70,7 +65,7 @@ class WorkflowExecutor(object):
 
             wflog.info(wf_id=self.model.wf_id, msg="finished group execution: {0}".format(group.groupid))
 
-        wflog.info(wf_id=self.model.wf_id, msg="finished workflow execution. Sucess: {0}".format(self.success))
+        wflog.info(wf_id=self.model.wf_id, msg="finished execution of all groups. Success: {0}".format(self.success))
 
         # if we have a callback signal it.
         if callback:

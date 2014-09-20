@@ -2,10 +2,27 @@
 
 import gevent
 import gevent.event
+from gevent.queue import Queue
+from gevent.event import AsyncResult
 from gevent import pool
 from gevent import monkey
 
 monkey.patch_all()
+
+
+class CallableWaiter(AsyncResult):
+    class ValueWrapper(object):
+        def __init__(self, result=None):
+            self.value = result
+
+        def successful(self):
+            return self.value is not None
+
+    def __init__(self):
+        AsyncResult.__init__(self)
+
+    def __call__(self, result):
+        AsyncResult.__call__(self, CallableWaiter.ValueWrapper(result=result))
 
 
 class GeventPool(object):
@@ -17,7 +34,10 @@ class GeventPool(object):
         self.pool = pool.Pool(self.capacity)
 
     def new_event(self):
-        return gevent.event.AsyncResult()
+        return CallableWaiter()
+
+    def new_queue(self):
+        return Queue()
 
     def spawn(self, func, args={}, callback=None, delay=0):
         """

@@ -1,16 +1,17 @@
 #! /usr/bin/python
 
 import cPickle
+import jsonpickle
 
 class Serializer(object):
     def __init__(self):
         pass
 
-    def serialize(self, obj, stream):
+    def dump(self, message, stream):
         pass
 
-    def deserialize(self, stream):
-        return None
+    def load(self, stream):
+        pass
 
 
 class cPickleSerializer(Serializer):
@@ -20,8 +21,23 @@ class cPickleSerializer(Serializer):
     def __init__(self):
         Serializer.__init__(self)
 
-    def deserialize(self, stream):
+    def load(self, stream):
         return cPickle.load(stream)
 
-    def serialize(self, stream, obj):
-        cPickle.dump(obj, stream, protocol=-1)
+    def dump(self, stream, message):
+        cPickle.dump(message, stream, protocol=-1)
+
+
+class JsonPickleSerializer(Serializer):
+    """
+    Serialize the messages using json pickle
+    """
+    def __init__(self):
+        Serializer.__init__(self)
+        jsonpickle.set_preferred_backend('json')
+
+    def load(self, stream):
+        return jsonpickle.decode(stream.readline())
+
+    def dump(self, stream, message):
+        stream.write(jsonpickle.encode(message))

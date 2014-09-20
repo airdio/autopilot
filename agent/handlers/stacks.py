@@ -29,7 +29,6 @@ class StackDeployHandler(Handler):
     def __init__(self, apenv, message):
         Handler.__init__(self, apenv, message)
         self.response = Message(type="stack_deploy_response", headers={}, data=None)
-        self.callback = None
 
     def process(self, callback=None):
         """
@@ -70,12 +69,7 @@ class StackDeployHandler(Handler):
                               groupset=GroupSet([Group(wf_id=wf_id, apenv=self.apenv, groupid="install_agent_roles", tasks=tasks)]),
                               workflow_state=initial_workflow_state)
 
-        if callback:
-            self.callback = callback
         ex = WorkflowExecutor(apenv=self.apenv, model=model)
-        ex.execute(callback=self._executor_callback)
+        ex.execute(callback=callback)
 
-    def _executor_callback(self, executor):
-        if self.callback:
-            self.callback(executor)
 

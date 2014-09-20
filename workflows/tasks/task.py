@@ -51,7 +51,6 @@ class Task(object):
         self.properties = properties
         self.result = None
         self.wf_id = wf_id
-        self.finalcallback = None  # we do not have a callback yet
         self.starttime = None
         self.endtime = None
         self.workflow_state = workflow_state
@@ -67,17 +66,22 @@ class Task(object):
             # todo exceptions
             raise Exception("Task {0} is not in Initialized state. State: {1}".format(self.name, self.result.state))
 
-        # todo: assigning this callback is a hack.
-        # we should to create an execution context here
-        self.finalcallback = callback
+        def _run_callback(final_state, messages=[], exceptions=[]):
+            wflog.info(wf_id=self.wf_id, msg="Executing run callback for task: {0}. Final state: {1}".format(self.name, final_state))
+            self.result.update(final_state, messages, exceptions)
+            self._finalize()
+            # original callback
+            if callback:
+                callback(self)
+
         self.result.update(TaskState.Started, ["Task {0} Started".format(self.name)])
 
         wflog.info(wf_id=self.wf_id, msg="begin task run: {0}".format(self.name))
         try:
-            self.on_run(self._on_run_callback)
+            self.on_run(_run_callback)
         except Exception as ex:
             wflog.error(wf_id=self.wf_id, msg="Error executing task: {0}".format(self.name), exc_info=ex)
-            self._on_rollback_callback(TaskState.Error, [], [ex])
+            _run_callback(TaskState.Error, [], [ex])
 
     # don't override this. Override process_rollback
     def rollback(self, callback):
@@ -86,17 +90,21 @@ class Task(object):
         if self.result.state == TaskState.Initialized:
             callback(self)
 
-        # todo: assigning this callback is a hack.
-        # we should to create an execution context here
-        self.finalcallback = callback
+        def _rollback_callback(final_state, messages=[], exceptions=[]):
+            self.result.update(final_state, messages, exceptions)
+            self._finalize()
+            # call the original callback
+            if callback:
+                callback(self)
+
         self.result.update(TaskState.Rolledback, ["Task {0} Started".format(self.name)])
 
         wflog.info(wf_id=self.wf_id, msg="begin task rollback: {0}".format(self.name))
         try:
-            self.on_rollback(self._on_rollback_callback)
+            self.on_rollback(_rollback_callback)
         except Exception as ex:
             wflog.error(wf_id=self.wf_id, msg="Error rolling back task: {0}".format(self.name), exc_info=ex)
-            self._on_rollback_callback(TaskState.RolledbackError, [], [ex])
+            _rollback_callback(TaskState.RolledbackError, [], [ex])
 
     # override in derived class
     def on_run(self, callback):
@@ -107,21 +115,6 @@ class Task(object):
     def on_rollback(self, callback):
         # todo make NotImplementedException
         raise Exception("should not be called. Derived class should implement this")
-
-    def _on_run_callback(self, final_state, messages=[], exceptions=[]):
-        self.result.update(final_state, messages, exceptions)
-        self._finalize()
-        # original callback
-        if self.finalcallback:
-            self.finalcallback(self)
-
-    def _on_rollback_callback(self, final_state, messages=[], exceptions=[]):
-        self.result.update(final_state, messages, exceptions)
-        self._finalize()
-
-        # call the original callback
-        if self.finalcallback:
-            self.finalcallback(self)
 
     # base class helper method to finalize this task
     def _finalize(self):

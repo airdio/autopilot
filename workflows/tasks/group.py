@@ -22,7 +22,7 @@ class Group(object):
         """
         Returns a fresh execution context
         """
-        return GroupExecutionContext(self.groupid, self.tasks)
+        return GroupExecutionContext(self.wf_id, self.groupid, self.tasks)
 
 
 class GroupSet(object):
@@ -37,7 +37,8 @@ class GroupSet(object):
 
 
 class GroupExecutionContext(object):
-    def __init__(self, groupid, tasks):
+    def __init__(self, wf_id, groupid, tasks):
+        self.wf_id = wf_id
         self.groupid = groupid
         self.tasks = tasks
         self.tasksdone = 0
@@ -55,7 +56,10 @@ class GroupExecutionContext(object):
 
     def _task_callback(self, task):
         self.tasksdone += 1
+        wflog.info(wf_id=self.wf_id, msg="in gec _task_callback for: {0}".format(self.tasksdone))
         if self.tasksdone == len(self.tasks):
+            wflog.info(wf_id=self.wf_id, msg="in gec. Final callback: {0}".format(self.tasksdone))
+            wflog.info(wf_id=self.wf_id, msg="in gec. finalcallback type: {0}".format(type(self.finalcallback)))
             self.finalcallback(self.tasks)
 
     @gen.engine

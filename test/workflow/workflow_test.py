@@ -38,10 +38,11 @@ class WorkflowTests(APtest):
         self._remove_files_if_exists(model)
         try:
             self.execute_workflow(ex)
-            self.ae(True, ex.success)
+            self.at(ex.success)
             for group in ex.groupset.groups:
                 for task in group.tasks:
-                    self.ae(TaskState.Done, task.result.state, "task should be in Done state")
+                    self.ae(TaskState.Done, task.result.state,
+                            "task should be in Done state" + str(task.result.state))
                     fp = task.properties["file_path"]
                     self.at(os.path.isfile(fp))
         finally:
