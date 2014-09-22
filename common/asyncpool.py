@@ -12,17 +12,18 @@ monkey.patch_all()
 
 class CallableWaiter(AsyncResult):
     class ValueWrapper(object):
-        def __init__(self, result=None):
+        def __init__(self, result=None, exception=None):
             self.value = result
+            self.exception=exception
 
         def successful(self):
-            return self.value is not None
+            return self.exception is None
 
     def __init__(self):
         AsyncResult.__init__(self)
 
-    def __call__(self, result):
-        AsyncResult.__call__(self, CallableWaiter.ValueWrapper(result=result))
+    def __call__(self, result, exception=None):
+        AsyncResult.__call__(self, CallableWaiter.ValueWrapper(result=result, exception=exception))
 
 
 class GeventPool(object):
@@ -69,6 +70,7 @@ class GeventPool(object):
             else:
                 gr = self.gpool.spawn(self.func, **self.args)
             gr.link(self._linkcb)
+            return gr
 
         def _spawn_later(self):
             def psuedo_later():
