@@ -17,40 +17,43 @@ class ServerTest(APtest):
     Server tests
     """
     def test_gevent_async(self):
-        class Handler(object):
-            def __init__(self):
-                self.waiter = taskpool.new_queue()
+        m = Message(type="stack_deploy",
+                    data=dict(name="test_gevent_async"),
+                    identifier="test_gevent_async")
 
-            def work(self, ar):
-                print "work function"
-                self.waiter.get(block=True, timeout=5)
-                print "received work...working"
-                taskpool.doyield(1)
-                ar(True)
+        # schedule the client to be called after the server starts
+        taskpool.spawn(func=self._single_message_client, args=dict(message=m))
 
-            def process(self, message, ar):
-                print "processing message: {0}".format(message.type)
-                taskpool.spawn(func=self.work, args={"ar": ar})
-                taskpool.spawn(func=self.waiter.put, args={"item": 2})
+        # start the server
+        self._start_server(handler=ServerTest.DefaultAsyncHandler())
 
-        def client():
+    def _start_server(self, handler, stop_delay=3):
+        s = Server(serializer=JsonPickleSerializer(), handler_resolver=lambda msg: handler)
+        taskpool.spawn(func=lambda: s.stop(), delay=stop_delay)
+        s.start()
+
+    def _single_message_client(self, message):
             print "spawning client"
-            m = Message(type="stack_deploy", data=dict(name="test_gevent_async"))
             import StringIO
             stream = StringIO.StringIO()
-            JsonPickleSerializer().dump(stream=stream, message=m)
+            JsonPickleSerializer().dump(stream=stream, message=message)
             stream.pos= 0
             r = requests.post(url="http://localhost:9191", data=stream)
             print r.status_code
 
-        # schedule the client to be called after the server starts
-        taskpool.spawn(func=client)
+    class DefaultAsyncHandler(object):
+            def __init__(self):
+                self.waiter = taskpool.new_queue()
 
-        # start the server
-        print "starting server"
-        s = Server(serializer=JsonPickleSerializer(), handler_resolver=lambda msg: Handler())
-        taskpool.spawn(func=lambda: s.stop(), delay=3)
-        s.start()
+            def work(self, ar, message):
+                print "work function"
+                self.waiter.get(block=True, timeout=5)
+                print "received work...working"
+                taskpool.doyield(1)
+                ar(message)
 
-
+            def process(self, message, ar):
+                print "processing message: {0}".format(message.type)
+                taskpool.spawn(func=self.work, args={"ar": ar, "message": message})
+                taskpool.spawn(func=self.waiter.put, args={"item": 2})
 

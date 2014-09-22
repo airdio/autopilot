@@ -30,21 +30,20 @@ class GitInstallProvider(InstallProvider):
         branch = self.role.deploy.get('branch')
         self._ensure_clean_working_dir()
         git_command = "git clone {0} {1} -b {2}".format(git_url, self.working_dir, branch)
-        log.info(GitInstallProvider.LOG_SOURCE, "Cloning from git. Command: {0}".format(git_command))
+        log.info("Cloning from git. Command: {0}".format(git_command))
         (return_code, out, error) = utils.subprocess_cmd(git_command, blocking=blocking)
         if return_code:
-            log.error(GitInstallProvider.LOG_SOURCE, "Error cloning: Return Code: {0}. Error: {1}".format(return_code, error))
+            log.error("Error cloning: Return Code: {0}. Error: {1}".format(return_code, error))
             raise exception.GitInstallProviderException("git clone failed: Command: {0} Return Code: {1} Error: {2}"
                                                         .format(git_command, return_code, error))
 
         (return_code, out, error) = self._install(blocking=blocking, timeout=timeout)
         if return_code:
-            log.error(GitInstallProvider.LOG_SOURCE,
-                      "Installation failed: Return Code: {0}. Error: {1}".format(return_code, error))
+            log.error("Installation failed: Return Code: {0}. Error: {1}".format(return_code, error))
             raise exception.GitInstallProviderException("Installation failed. \n Error: {0}"
                                                         .format(error))
 
-        log.info(GitInstallProvider.LOG_SOURCE, "Installation done. Output: {0}".format(out))
+        log.info("Installation done. Output: {0}".format(out))
 
     def _ensure_clean_working_dir(self):
         utils.rmtree(self.working_dir)
@@ -60,7 +59,7 @@ class GitInstallProvider(InstallProvider):
         script_file = self.role.deploy.get('script')
         module_name, extension = os.path.splitext(script_file)
 
-        log.info(GitInstallProvider.LOG_SOURCE, "Installing module: {0}".format(script_file))
+        log.info("Installing module: {0}".format(script_file))
         if extension == ".py":
             return SafePythonModuleRunner().run(ap_env_json=self._build_env(),
                                                 working_dir=self.working_dir,

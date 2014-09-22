@@ -36,7 +36,7 @@ class Server(object):
             self.instance = None
 
         def start(self, host, port):
-            aglog.info("Starting GeventServer {0}:{1}".format(self.host, self.port))
+            aglog.info("Starting GeventServer {0}:{1}".format(host, port))
             self.instance = pywsgi.WSGIServer((host, port), self.handle_request)
             self.instance.serve_forever()
 
@@ -53,7 +53,9 @@ class Server(object):
             def finish_response(response_message):
                 import StringIO
                 stream = StringIO.StringIO()
-                self.serializer.dump(stream=stream, message=response_message.value)
+                message = response_message.value
+                aglog.info("Finishing response for message id:{0} and type: {1} ".format(message.identifier, message.type))
+                self.serializer.dump(stream=stream, message=message)
                 stream.pos = 0
                 response_future.put(item=stream.readline())
                 response_future.put(item=StopIteration)
