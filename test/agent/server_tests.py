@@ -30,6 +30,38 @@ class ServerTest(APtest):
         (status_code, response) = clientg.get()
         self.ae(200, status_code)
 
+    def test_gevent_server_data_object(self):
+        class SomeObject(object):
+            def __init__(self, value=2):
+                self.value = value
+
+        m = Message(type="stack_deploy",
+                    data=SomeObject(),
+                    identifier="test_gevent_async")
+
+        # schedule the client to be called after the server starts
+        clientg = taskpool.spawn(func=self._single_message_client, args=dict(message=m))
+
+        # start the server
+        self._start_server(handler=ServerTest.DefaultAsyncHandler())
+
+        (status_code, response) = clientg.get()
+        self.ae(200, status_code)
+
+    def test_gevent_server_empty_data(self):
+        m = Message(type="stack_deploy",
+                    data=None,
+                    identifier="test_gevent_async")
+
+        # schedule the client to be called after the server starts
+        clientg = taskpool.spawn(func=self._single_message_client, args=dict(message=m))
+
+        # start the server
+        self._start_server(handler=ServerTest.DefaultAsyncHandler())
+
+        (status_code, response) = clientg.get()
+        self.ae(200, status_code)
+
     def test_gevent_handled_error(self):
         m = Message(type="stack_deploy",
                     data=dict(name="test_gevent_async"),
@@ -60,6 +92,19 @@ class ServerTest(APtest):
         (status_code, response) = clientg.get()
         self.ae(500, status_code)
 
+    def test_gevent_bad_message_format(self):
+        m = "bad_message_format"
+
+        # schedule the client to be called after the server starts
+        clientg = taskpool.spawn(func=self._single_message_client, args=dict(message=m))
+
+        # start the server
+        self._start_server(handler=ServerTest.DefaultAsyncHandler(exception=Exception(), unhandled=True))
+
+        # server stopped check status code
+        (status_code, response) = clientg.get()
+        self.ae(400, status_code)
+
     def _start_server(self, handler, stop_delay=3):
         s = Server(serializer=JsonPickleSerializer(), handler_resolver=lambda msg: handler)
         taskpool.spawn(func=lambda: s.stop(), delay=stop_delay)
@@ -69,8 +114,12 @@ class ServerTest(APtest):
         import StringIO
         stream = StringIO.StringIO()
         JsonPickleSerializer().dump(stream=stream, message=message)
-        stream.pos= 0
+        stream.pos=0
         r = requests.post(url="http://localhost:9191", data=stream)
+        return (r.status_code, r.text)
+
+    def _string_message_client(self, message):
+        r = requests.post(url="http://localhost:9191", data=message)
         return (r.status_code, r.text)
 
     class DefaultAsyncHandler(object):

@@ -8,7 +8,7 @@ worker/agent:
     - iso8601==0.1.10
     - pyyaml==3.10
     - pycrypto=2.6.1
-      ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install pycrypto
+          ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install pycrypto
     - scp==0.71
     - paramiko==1.13
     - requests

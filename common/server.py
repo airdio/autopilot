@@ -3,7 +3,7 @@
 from gevent import pywsgi
 from autopilot.common.logger import aglog
 from autopilot.common.asyncpool import taskpool
-
+from autopilot.protocol.message import Message
 
 
 class Server(object):
@@ -67,25 +67,24 @@ class Server(object):
 
                 response_future.put(item=StopIteration)
 
-            request_message = None
-            try:
-                # try to deserialize the message. If it fails we throw a bad request
-                request_message = self.serializer.load(env['wsgi.input'])
-            except Exception as ex:
+            # try to deserialize the message.
+            # If it fails we throw a bad request
+            request_message = self.serializer.load(env['wsgi.input'])
+            if type(request_message) is not Message:
                 start_response('400 Bad Request', [])
-                aglog.error(msg="Failed to deserialize the message: {0}".format(ex.message), exc_info=ex)
+                aglog.error(msg="Failed to deserialize request message. Bailing out")
                 response_future.put(item=StopIteration)
-
-            try:
-                # execute handler
-                ar = taskpool.new_event()
-                self.handler_resolver(request_message.type).process(request_message, ar)
-                ar.rawlink(callback=finish_response)
-            except Exception as ex:
-                start_response('500 Internal Server error', [])
-                aglog.error(msg="Unhandled exception when processing message. Message id: {0}. Message type: {1}. Exception: {2}"
-                            .format(request_message.identifier, request_message.type, ex.message),
-                            exc_info=ex)
-                response_future.put(item=StopIteration)
+            else:
+                try:
+                    # execute handler
+                    ar = taskpool.new_event()
+                    self.handler_resolver(request_message.type).process(request_message, ar)
+                    ar.rawlink(callback=finish_response)
+                except Exception as ex:
+                    start_response('500 Internal Server error', [])
+                    aglog.error(msg="Unhandled exception when processing message. Message id: {0}. Message type: {1}. Exception: {2}"
+                                .format(request_message.identifier, request_message.type, ex.message),
+                                exc_info=ex)
+                    response_future.put(item=StopIteration)
 
             return response_future
