@@ -17,6 +17,7 @@ from autopilot.workflows.tasks.task import TaskState
 from autopilot.protocol.message import Message
 from autopilot.agent.handlers.stacks import StackDeployHandler
 
+
 class InstallRoleTest(APtest):
     """
     Install Role task tests
@@ -224,12 +225,12 @@ class InstallRoleTest(APtest):
                       data={"target_role_group": "hdfs",
                             "stack": stack})
 
-        handler = StackDeployHandler(apenv=apenv, message=msg)
+        handler = StackDeployHandler(apenv=apenv, message_type=msg.type)
         wait_event = taskpool.new_event()
-        handler.process(callback=wait_event)
-        ex = wait_event.get(timeout=30)
+        handler.process(message=msg, process_callback=wait_event)
+        response_message = wait_event.get(timeout=30)
         current_file_path = os.path.join(test_dir, stack.name, "hdfs", "hdfs", "current")
-        self.at(ex.success, "Executor.success should be true")
+        self.at(response_message, "Response messae should not be None")
         with open(current_file_path) as f:
             curr_ver = f.readline()
             self.ae("2.4", curr_ver, "new current version is 2.4")

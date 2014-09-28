@@ -19,4 +19,4 @@ apspec:
         ports: [50070, 8032]
         tags:
           type: data_science
-      roles:[hdfs]
+      roles: [hdfs]

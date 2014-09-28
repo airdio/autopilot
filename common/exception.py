@@ -18,6 +18,21 @@ class AutopilotException(Exception):
         return str(d)
 
 
+class AgentException(AutopilotException):
+    def __init__(self, msg, *args, **kwargs):
+        AutopilotException.__init__(self, msg, *args, **kwargs)
+
+
+class GitInstallProviderException(AgentException):
+    def __init__(self, msg, inner_exception=None):
+        AgentException.__init__(self, msg, inner_exception=inner_exception)
+
+
+class InvalidTargetRoleGroup(AgentException):
+    def __init__(self, msg, inner_exception=None):
+        AgentException.__init__(self, msg, inner_exception=inner_exception)
+
+
 class WorkflowException(AutopilotException):
     """
     Base class for workflow related exceptions
@@ -26,17 +41,13 @@ class WorkflowException(AutopilotException):
         AutopilotException.__init__(self, msg, args, kwargs)
         self.wf_id = wf_id
 
+
 class AgentWorkflowException(WorkflowException):
     """
     Base class for workflow related exceptions
     """
     def __init__(self, msg, wf_id, *args, **kwargs):
         AutopilotException.__init__(self, msg, wf_id, args, kwargs)
-
-
-class GitInstallProviderException(AutopilotException):
-    def __init__(self, msg, inner_exception=None):
-        AutopilotException.__init__(self, msg, inner_exception=inner_exception)
 
 
 class CommandNotFound(AutopilotException):

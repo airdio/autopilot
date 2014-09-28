@@ -46,10 +46,10 @@ class APtest(unittest.TestCase):
         apenv.add_inf_resolver(wf_id, InfResolver())
         return apenv
 
-    def get_default_apenv(self, wf_id):
-        properties = {}
+    def get_default_apenv(self, wf_id, properties={}):
         apenv = ApEnv()
-        apenv.add(wf_id, dict(inf=properties))
+        apenv.add(wf_id, {})
+        apenv.update(properties)
         apenv.add_task_resolver(wf_id, TaskResolver(self))
         apenv.add_inf_resolver(wf_id, InfResolver())
         return apenv

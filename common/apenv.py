@@ -14,6 +14,10 @@ class ApEnv(object):
     def get(self, key, default=None):
         return self.env.get(key, default)
 
+    def update(self, update_dict=None):
+        if update_dict:
+            self.env.update(update_dict)
+
     def get_task_resolver(self, wf_id):
         return self.env[wf_id].get("task_resolver", None)
 
