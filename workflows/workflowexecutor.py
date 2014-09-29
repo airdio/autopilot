@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from tornado import gen
-from autopilot.common.logger import wflog
+from autopilot.common import logger
 from autopilot.workflows.tasks.task import TaskState
 
 
@@ -10,6 +10,7 @@ class WorkflowExecutor(object):
     Executes a given workflow and manages its life cycle
     """
     def __init__(self, apenv, model):
+        self.log = logger.get_workflow_logger("WorkflowExecutor")
         self.apenv = apenv
         self.model = model
         self.workflow_state = model.workflow_state
@@ -52,7 +53,7 @@ class WorkflowExecutor(object):
             # this will yield to gen.engine
             # gen.engine will continue execution once task callback
             # function is executed
-            wflog.info(wf_id=self.model.wf_id, msg="begin group execution: {0}".format(group.groupid))
+            self.log.info(wf_id=self.model.wf_id, msg="begin group execution: {0}".format(group.groupid))
             yield gen.Task(ec.run)
 
             if not self._check_group_success(group):
@@ -63,13 +64,13 @@ class WorkflowExecutor(object):
                 self.success = False
                 break
 
-            wflog.info(wf_id=self.model.wf_id, msg="finished group execution: {0}".format(group.groupid))
+            self.log.info(wf_id=self.model.wf_id, msg="finished group execution: {0}".format(group.groupid))
 
-        wflog.info(wf_id=self.model.wf_id, msg="finished execution of all groups. Success: {0}".format(self.success))
+        self.log.info(wf_id=self.model.wf_id, msg="finished execution of all groups. Success: {0}".format(self.success))
 
         # if we have a callback signal it.
         if callback:
-            wflog.info(wf_id=self.model.wf_id, msg="Signalling callback")
+            self.log.info(wf_id=self.model.wf_id, msg="Signalling callback")
             callback(self)
 
     @gen.engine

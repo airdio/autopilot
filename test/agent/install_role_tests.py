@@ -11,7 +11,7 @@ from autopilot.test.common.aptest import APtest
 from autopilot.common import exception
 from autopilot.common import utils
 from autopilot.common.apenv import ApEnv
-from autopilot.agent.tasks.InstallRole import InstallRole
+from autopilot.agent.tasks.InstallRoleTask import InstallRoleTask
 from autopilot.common.asyncpool import taskpool
 from autopilot.workflows.tasks.task import TaskState
 from autopilot.protocol.message import Message
@@ -39,7 +39,7 @@ class InstallRoleTest(APtest):
         }
         # print stack.groups.get('hdfs').roles
         wf_id = "InstallRole_test_wf_id"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         task.run()
 
         self.ae(TaskState.Done, task.result.state, "Task should be in done state")
@@ -74,7 +74,7 @@ class InstallRoleTest(APtest):
         tc = InstallRoleTest.TimeClass()
         # pump run through gevent
         wf_id = "InstallRole_test_wf_id"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         taskpool.spawn(task.run)
         taskpool.spawn(tc.update_time)
         taskpool.join(timeout=10)
@@ -112,7 +112,7 @@ class InstallRoleTest(APtest):
 
         stack.groups.get("hdfs").roles[0].deploy["git"] = "https://badurl"
         wf_id = "InstallRole_test_wf_id"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         task.run()
         self.ae(TaskState.Error, task.result.state, "Task should be error")
         self.ae(exception.GitInstallProviderException, type(task.result.exceptions[0]))
@@ -136,7 +136,7 @@ class InstallRoleTest(APtest):
         }
         # Install version 2.4 first
         wf_id = "InstallRole_test_wf_id"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         task.run()
         self.ae(TaskState.Done, task.result.state, "Task should be in done state")
         working_dir = os.path.join(test_dir, stack.name, "hdfs", "hdfs", "versions", "2.4")
@@ -148,7 +148,7 @@ class InstallRoleTest(APtest):
 
         #update to version 2.5 and install again
         stack.groups.get("hdfs").roles[0].version = "2.5"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         task.run()
 
         # verify if new version is installed
@@ -182,7 +182,7 @@ class InstallRoleTest(APtest):
         }
         # Install version 2.4 first
         wf_id = "InstallRole_test_wf_id"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         task.run()
         self.ae(TaskState.Done, task.result.state, "Task should be in done state")
         working_dir = os.path.join(test_dir, stack.name, "hdfs", "hdfs", "versions", "2.4")
@@ -195,7 +195,7 @@ class InstallRoleTest(APtest):
         #update to version 2.5 and bad url and install again
         stack.groups.get("hdfs").roles[0].version = "2.5"
         stack.groups.get("hdfs").roles[0].deploy["git"] = "https://badurl"
-        task = InstallRole(self.get_default_apenv(wf_id), wf_id, None, properties, None)
+        task = InstallRoleTask(self.get_default_apenv(wf_id), wf_id, None, properties, None)
         task.run()
 
         # verify that the task fails and the old version is still the current

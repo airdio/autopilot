@@ -1,13 +1,13 @@
 #! /usr/bin/python
 
-from autopilot.common.logger import wflog
+from autopilot.common import logger
 from autopilot.common import utils
 from autopilot.common.exception import AutopilotException
 from autopilot.workflows.tasks.task import Task, TaskState
 from autopilot.agent.installers.InstallProviders import GitInstallProvider
 
 
-class InstallRole(Task):
+class InstallRoleTask(Task):
     """
     Install the role on this machine
     This is called by the the ap agent running on a vm/container.
@@ -15,7 +15,8 @@ class InstallRole(Task):
     Name = "InstallRole"
 
     def __init__(self, apenv, wf_id, inf, properties, workflow_state):
-        Task.__init__(self, apenv, InstallRole.Name, wf_id, inf, properties, workflow_state)
+        Task.__init__(self, apenv, InstallRoleTask.Name, wf_id, inf, properties, workflow_state)
+        self.log = logger.get_workflow_logger("InstallRoleTask")
         self.apenv = apenv
         self.stack = properties.get("stack")
         self.target_role_group = properties.get("target_role_group")
@@ -31,12 +32,12 @@ class InstallRole(Task):
         # check if the versions we have and the one being deployed are the same
         error = None
         installed_version = self._get_installed_role_version(self.target_role)
-        wflog.info("For role {0} Installed role version is {1} and target version is role {2}"
-                   .format(self.target_role.name, installed_version, self.target_role.version), self.wf_id)
+        self.log.info("For role {0} Installed role version is {1} and target version is role {2}"
+                      .format(self.target_role.name, installed_version, self.target_role.version), self.wf_id)
 
         if installed_version and installed_version == str(self.target_role.version):
             # we don't need to do anything
-            wflog.info("Installed version is same as target version. Skipping", self.wf_id)
+            self.log.info("Installed version is same as target version. Skipping", self.wf_id)
             callback(TaskState.Done, ["Task {0} done".format(self.name)], [])
 
         # Install the role
@@ -47,7 +48,7 @@ class InstallRole(Task):
             self._install_role(working_dir, self.target_role)
             self._update_current_role_config(self.target_role)
         except AutopilotException as ex:
-            wflog.error("InstallRole raised error", wf_id=self.wf_id, exc_info=ex)
+            self.log.error("InstallRole raised error", wf_id=self.wf_id, exc_info=ex)
             error = ex
 
         # finish the task
@@ -67,15 +68,13 @@ class InstallRole(Task):
     def _install_role(self, working_dir, role):
         installer = None
         if role.deploy.get('git'):
-            wflog.info("Running GitInstaller for role: {0}. Working dir: {1}".format(role.name, working_dir),
-                       self.wf_id)
+            self.log.info("Running GitInstaller for role: {0}. Working dir: {1}".format(role.name, working_dir), self.wf_id)
             installer = GitInstallProvider(self.apenv, role, self.target_role_group, self.stack, working_dir)
 
         if installer:
             return installer.run()
         else:
-            wflog.warning("No installer found to install role: {0}. Working dir: {1}".format(role.name, working_dir),
-                          self.wf_id)
+            self.log.warning("No installer found to install role: {0}. Working dir: {1}".format(role.name, working_dir), self.wf_id)
 
     def _update_current_role_config(self, role):
         current_file_path = utils.path_join(self.root_dir, self.stack_name,

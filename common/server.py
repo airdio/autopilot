@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from gevent import pywsgi
-from autopilot.common.logger import aglog
+from autopilot.common import logger
 from autopilot.common.asyncpool import taskpool
 from autopilot.protocol.message import Message
 
@@ -31,22 +31,23 @@ class Server(object):
 
     class GeventServer(object):
         def __init__(self, serializer, handler_resolver):
+            self.log = logger.get_logger("GeventServer")
             self.serializer = serializer
             self.handler_resolver = handler_resolver
             self.instance = None
 
         def start(self, host, port):
-            aglog.info("Starting GeventServer {0}:{1}".format(host, port))
+            self.log.info("Starting GeventServer {0}:{1}".format(host, port))
             self.instance = pywsgi.WSGIServer((host, port), self.handle_request)
             self.instance.serve_forever()
 
         def stop(self):
-            aglog.info("Stopping Server")
+            self.log.info("Stopping Server")
             self.instance.stop()
-            aglog.info("Server stopped")
+            self.log.info("Server stopped")
 
         def handle_request(self, env, start_response):
-            aglog.info("GEventServer received raw request on pywsgi handler")
+            self.log.info("GEventServer received raw request on pywsgi handler")
             response_future = taskpool.new_queue()
 
             def finish_response(response_message):
@@ -55,12 +56,12 @@ class Server(object):
                 message = response_message.value
                 if response_message.exception:
                     erx = response_message.exception
-                    aglog.error(msg="Response message contains an exception. {0}".format(erx.message),
+                    self.log.error(msg="Response message contains an exception. {0}".format(erx.message),
                                 exc_info=erx)
                     start_response('500 Internal Server Error', [])
                 else:
                     start_response('200 OK', [])
-                    aglog.info("Finishing response for message id:{0} and type: {1} ".format(message.identifier, message.type))
+                    self.log.info("Finishing response for message id:{0} and type: {1} ".format(message.identifier, message.type))
                     self.serializer.dump(stream=stream, message=message)
                     stream.pos = 0
                     response_future.put(item=stream.readline())
@@ -72,7 +73,7 @@ class Server(object):
             request_message = self.serializer.load(env['wsgi.input'])
             if type(request_message) is not Message:
                 start_response('400 Bad Request', [])
-                aglog.error(msg="Failed to deserialize request message. Bailing out")
+                self.log.error(msg="Failed to deserialize request message. Bailing out")
                 response_future.put(item=StopIteration)
             else:
                 try:
@@ -82,7 +83,7 @@ class Server(object):
                     ar.rawlink(callback=finish_response)
                 except Exception as ex:
                     start_response('500 Internal Server error', [])
-                    aglog.error(msg="Unhandled exception when processing message. Message id: {0}. Message type: {1}. Exception: {2}"
+                    self.log.error(msg="Unhandled exception when processing message. Message id: {0}. Message type: {1}. Exception: {2}"
                                 .format(request_message.identifier, request_message.type, ex.message),
                                 exc_info=ex)
                     response_future.put(item=StopIteration)

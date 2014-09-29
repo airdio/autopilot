@@ -3,9 +3,9 @@
 from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
 from autopilot.workflows.tasks.group import Group, GroupSet
-from autopilot.agent.tasks.InstallRole import InstallRole
+from autopilot.agent.tasks.InstallRoleTask import InstallRoleTask
 from autopilot.protocol.message import Message
-from autopilot.common.logger import aglog
+from autopilot.common import logger
 from autopilot.common import exception
 
 class Handler(object):
@@ -15,7 +15,6 @@ class Handler(object):
     def __init__(self, apenv, message_type):
         self.apenv = apenv
         self.message_type = message_type
-
 
     def process(self, message, callback=None):
         pass
@@ -27,6 +26,7 @@ class StackDeployHandler(Handler):
     """
     def __init__(self, apenv, message_type):
         Handler.__init__(self, apenv, message_type)
+        self.log = logger.get_logger("StackDeployHandler")
         self.response = Message(type="stack_deploy_response", headers={}, data=None)
 
     def process(self, message, process_callback=None):
@@ -41,7 +41,7 @@ class StackDeployHandler(Handler):
         stack = data.get("stack")
         role_group = data.get("target_role_group")
 
-        aglog.info("Processing message of type: {0}. Domain: {1}".format(self.message_type, headers.get("domain")))
+        self.log.info("Processing message of type: {0}. Domain: {1}".format(self.message_type, headers.get("domain")))
 
         if not stack.groups.get(role_group):
             raise exception.InvalidTargetRoleGroup(role_group)
@@ -62,11 +62,11 @@ class StackDeployHandler(Handler):
                 }
             }
             initial_workflow_state[role_group][role.name] = {}
-            tasks.append(InstallRole(apenv=self.apenv, wf_id=wf_id, inf=None,
+            tasks.append(InstallRoleTask(apenv=self.apenv, wf_id=wf_id, inf=None,
                                      properties=properties, workflow_state=initial_workflow_state))
 
-        aglog.info("Executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
-                   .format(self.message_type, headers.get("domain"), wf_id))
+        self.log.info("Executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
+                      .format(self.message_type, headers.get("domain"), wf_id))
 
         model = WorkflowModel(wf_id=wf_id,
                               type="stack",
@@ -81,16 +81,16 @@ class StackDeployHandler(Handler):
             # paser execution state and create a response
             rm = None
             if executor.success:
-                aglog.info("Success executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
-                           .format(self.message_type, headers.get("domain"), wf_id))
+                self.log.info("Success executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
+                              .format(self.message_type, headers.get("domain"), wf_id))
 
                 rm = Message(type="response-stack-deploy",
                              headers={"domain": "dev.contoso.org"},
                              data=executor.model.workflow_state[role_group])
                 process_callback(result=rm, exception=None)
             else:
-                aglog.error("Error executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
-                            .format(self.message_type, headers.get("domain"), wf_id))
+                self.log.error("Error executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
+                               .format(self.message_type, headers.get("domain"), wf_id))
                 # todo: get exception data from the executor
                 process_callback(result=rm, exception=Exception())
 

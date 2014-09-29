@@ -1,7 +1,7 @@
 #! /usr/bin python
 
 from autopilot.common import utils
-from autopilot.common.logger import wflog
+from autopilot.common import logger
 
 class TaskState(object):
     """
@@ -13,6 +13,17 @@ class TaskState(object):
     Done = 3
     Rolledback = 4
     RolledbackError = 5
+
+    _strs = {0: "INITIALIZED",
+             1: "STARTED",
+             2: "ERROR",
+             3: "DONE",
+             4: "ROLLEDBACK",
+             5: "ROLLEDBACKERROR"}
+
+    @staticmethod
+    def to_string(state):
+        return TaskState._strs.get(state, "Unknown")
 
 
 class TaskResult(object):
@@ -45,6 +56,7 @@ class Task(object):
     Models a runnable task
     """
     def __init__(self, apenv, name, wf_id, inf, properties, workflow_state):
+        self.log = logger.get_logger("Task")
         self.apenv = apenv
         self.name = name
         self.inf = inf
@@ -67,7 +79,8 @@ class Task(object):
             raise Exception("Task {0} is not in Initialized state. State: {1}".format(self.name, self.result.state))
 
         def _run_callback(final_state, messages=[], exceptions=[]):
-            wflog.info(wf_id=self.wf_id, msg="Executing run callback for task: {0}. Final state: {1}".format(self.name, final_state))
+            self.log.info(wf_id=self.wf_id, msg="Executing run callback for task: {0}. Final state: {1}"
+                          .format(self.name, TaskState.to_string(final_state)))
             self.result.update(final_state, messages, exceptions)
             self._finalize()
             # original callback
@@ -76,11 +89,11 @@ class Task(object):
 
         self.result.update(TaskState.Started, ["Task {0} Started".format(self.name)])
 
-        wflog.info(wf_id=self.wf_id, msg="begin task run: {0}".format(self.name))
+        self.log.info(wf_id=self.wf_id, msg="begin task run: {0}".format(self.name))
         try:
             self.on_run(_run_callback)
         except Exception as ex:
-            wflog.error(wf_id=self.wf_id, msg="Error executing task: {0}".format(self.name), exc_info=ex)
+            self.log.error(wf_id=self.wf_id, msg="Error executing task: {0}".format(self.name), exc_info=ex)
             _run_callback(TaskState.Error, [], [ex])
 
     # don't override this. Override process_rollback
@@ -91,6 +104,8 @@ class Task(object):
             callback(self)
 
         def _rollback_callback(final_state, messages=[], exceptions=[]):
+            self.log.info(wf_id=self.wf_id, msg="Executing rollback callback for task: {0}. Final state: {1}"
+                          .format(self.name, TaskState.to_string(final_state)))
             self.result.update(final_state, messages, exceptions)
             self._finalize()
             # call the original callback
@@ -99,11 +114,11 @@ class Task(object):
 
         self.result.update(TaskState.Rolledback, ["Task {0} Started".format(self.name)])
 
-        wflog.info(wf_id=self.wf_id, msg="begin task rollback: {0}".format(self.name))
+        self.log.info(wf_id=self.wf_id, msg="begin task rollback: {0}".format(self.name))
         try:
             self.on_rollback(_rollback_callback)
         except Exception as ex:
-            wflog.error(wf_id=self.wf_id, msg="Error rolling back task: {0}".format(self.name), exc_info=ex)
+            self.log.error(wf_id=self.wf_id, msg="Error rolling back task: {0}".format(self.name), exc_info=ex)
             _rollback_callback(TaskState.RolledbackError, [], [ex])
 
     # override in derived class
@@ -123,4 +138,4 @@ class Task(object):
         send relevant events
         """
         self.endtime = utils.get_utc_now_seconds()
-        wflog.info(wf_id=self.wf_id, msg="Task {0} done. Final state {1}".format(self.name, self.result.state))
+        self.log.info(wf_id=self.wf_id, msg="Task {0} done. Final state: {1}".format(self.name, TaskState.to_string(self.result.state)))

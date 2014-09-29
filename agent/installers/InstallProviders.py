@@ -3,7 +3,7 @@ import os
 import json
 from autopilot.common import utils
 from autopilot.common import exception
-from autopilot.common.logger import log
+from autopilot.common import logger
 
 
 class InstallProvider(object):
@@ -17,33 +17,35 @@ class InstallProvider(object):
         self.stack_spec = stack_spec
         self.role_group_name = role_group_name
 
+
 class GitInstallProvider(InstallProvider):
     """
     Git install provider
     """
     LOG_SOURCE = "GitInstallProvider"
     def __init__(self, apenv, role, role_group_name, stack_spec, working_dir):
-         InstallProvider.__init__(self, apenv, role, role_group_name, stack_spec, working_dir)
+        InstallProvider.__init__(self, apenv, role, role_group_name, stack_spec, working_dir)
+        self.log = logger.get_logger("GitInstallProvider")
 
     def run(self, blocking=True, timeout=120):
         git_url = self.role.deploy.get('git')
         branch = self.role.deploy.get('branch')
         self._ensure_clean_working_dir()
         git_command = "git clone {0} {1} -b {2}".format(git_url, self.working_dir, branch)
-        log.info("Cloning from git. Command: {0}".format(git_command))
+        self.log.info("Cloning from git. Command: {0}".format(git_command))
         (return_code, out, error) = utils.subprocess_cmd(git_command, blocking=blocking)
         if return_code:
-            log.error("Error cloning: Return Code: {0}. Error: {1}".format(return_code, error))
+            self.log.error("Error cloning: Return Code: {0}. Error: {1}".format(return_code, error))
             raise exception.GitInstallProviderException("git clone failed: Command: {0} Return Code: {1} Error: {2}"
                                                         .format(git_command, return_code, error))
 
         (return_code, out, error) = self._install(blocking=blocking, timeout=timeout)
         if return_code:
-            log.error("Installation failed: Return Code: {0}. Error: {1}".format(return_code, error))
+            self.log.error("Installation failed: Return Code: {0}. Error: {1}".format(return_code, error))
             raise exception.GitInstallProviderException("Installation failed. \n Error: {0}"
                                                         .format(error))
 
-        log.info("Installation done. Output: {0}".format(out))
+        self.log.info("Installation done. Output: {0}".format(out))
 
     def _ensure_clean_working_dir(self):
         utils.rmtree(self.working_dir)
@@ -59,7 +61,7 @@ class GitInstallProvider(InstallProvider):
         script_file = self.role.deploy.get('script')
         module_name, extension = os.path.splitext(script_file)
 
-        log.info("Installing module: {0}".format(script_file))
+        self.log.info("Installing module: {0}".format(script_file))
         if extension == ".py":
             return SafePythonModuleRunner().run(ap_env_json=self._build_env(),
                                                 working_dir=self.working_dir,
@@ -79,12 +81,17 @@ class SafeShellModuleRunner(object):
     Loads user provider shell script in a different process and runs
     desired actions
     """
+    def __init__(self):
+        self.log = logger.get_logger("SafeShellModuleRunner")
+
+    # todo: use timeout
     def run(self, ap_env_json, working_dir, module_name, blocking=True, timeout=None):
         env_tmp_file = os.path.join(working_dir, 'apenv.json')
         with open(env_tmp_file, 'w') as f:
             f.write(ap_env_json)
             f.write("\n")
         command = "./" + module_name
+        self.log.info("Running command: {0} from working_dir: {1}".format(command, working_dir))
         return utils.subprocess_cmd(command, working_dir=working_dir, blocking=blocking)
 
 
@@ -93,9 +100,14 @@ class SafePythonModuleRunner(object):
     Loads user provider python scripts in a different process and runs
     desired actions
     """
+    def __init__(self):
+        self.log = logger.get_logger("SafePythonModuleRunner")
+
+    # todo: use timeout
     def run(self, ap_env_json, working_dir, module_name, blocking=True, timeout=None):
         env_tmp_file = os.path.join(working_dir, 'apenv.json')
         with open(env_tmp_file, 'w') as f:
             f.write(ap_env_json)
         command = "python -c \"import test; import json; import os; env=json.load(open('{1}')); import {2}; {2}.install(env=env)\"".format(ap_env_json, env_tmp_file, module_name)
+        self.log.info("Running python command: {0} from working_dir: {1}".format(command, working_dir))
         return utils.subprocess_cmd(command, working_dir=working_dir, blocking=blocking)
