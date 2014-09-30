@@ -1,5 +1,5 @@
 #! /usr/bin/python
-
+from autopilot.common.asyncpool import taskpool
 from tornado import gen
 from autopilot.common import logger
 from autopilot.workflows.tasks.task import TaskState
@@ -21,24 +21,20 @@ class WorkflowExecutor(object):
         self.executed = False
         self.value = self
 
-    def execute(self, callback=None):
+    def execute(self):
         """
         :type: callable
         :param Any callable. Will be called when process completes
         """
         if self.executed:
             raise Exception("Execution of a workflow is only allowed once")
+        execute_future = taskpool.callable_future()
         self.executed = True
-        self._execute_groups(callback=callback)
-
-    def successful(self):
-        """
-        Hook to make callback work is its gevent.Asyncresult
-        """
-        return True
+        self._execute_groups(execute_future=execute_future)
+        return execute_future
 
     @gen.engine
-    def _execute_groups(self, callback=None):
+    def _execute_groups(self, execute_future):
         """
         Groups are always executed in a serial fashion.
         Individual tasks within groups maybe executed in parallel
@@ -68,10 +64,9 @@ class WorkflowExecutor(object):
 
         self.log.info(wf_id=self.model.wf_id, msg="finished execution of all groups. Success: {0}".format(self.success))
 
-        # if we have a callback signal it.
-        if callback:
-            self.log.info(wf_id=self.model.wf_id, msg="Signalling callback")
-            callback(self)
+        # Signal future
+        self.log.info(wf_id=self.model.wf_id, msg="Signalling execute_future")
+        execute_future(self)
 
     @gen.engine
     def rollback(self):

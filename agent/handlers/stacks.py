@@ -1,5 +1,6 @@
 #! /usr/bin/python
 
+from autopilot.common.asyncpool import taskpool
 from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
 from autopilot.workflows.tasks.group import Group, GroupSet
@@ -16,7 +17,7 @@ class Handler(object):
         self.apenv = apenv
         self.message_type = message_type
 
-    def process(self, message, callback=None):
+    def process(self, message):
         pass
 
 
@@ -29,13 +30,14 @@ class StackDeployHandler(Handler):
         self.log = logger.get_logger("StackDeployHandler")
         self.response = Message(type="stack_deploy_response", headers={}, data=None)
 
-    def process(self, message, process_callback=None):
+    def process(self, message):
         """
         Process the stack deployment message
 
         :type: callable
         :param Any callable. Will be called when process completes
         """
+        process_future = taskpool.callable_future()
         headers = message.headers
         data = message.data
         stack = data.get("stack")
@@ -77,9 +79,9 @@ class StackDeployHandler(Handler):
                                                        groupid="install_agent_roles", tasks=tasks)]),
                               workflow_state=initial_workflow_state)
 
-        def executor_callback(executor):
-            # paser execution state and create a response
+        def executor_callback(executor_future):
             rm = None
+            executor = executor_future.value
             if executor.success:
                 self.log.info("Success executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
                               .format(self.message_type, headers.get("domain"), wf_id))
@@ -87,13 +89,13 @@ class StackDeployHandler(Handler):
                 rm = Message(type="response-stack-deploy",
                              headers={"domain": "dev.contoso.org"},
                              data=executor.model.workflow_state[role_group])
-                process_callback(result=rm, exception=None)
+                process_future(result=rm, exception=None)
             else:
                 self.log.error("Error executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
                                .format(self.message_type, headers.get("domain"), wf_id))
                 # todo: get exception data from the executor
-                process_callback(result=rm, exception=Exception())
+                process_future(result=rm, exception=Exception())
 
-        WorkflowExecutor(apenv=self.apenv, model=model).execute(callback=executor_callback)
-
+        WorkflowExecutor(apenv=self.apenv, model=model).execute().on_complete(executor_callback)
+        return process_future
 

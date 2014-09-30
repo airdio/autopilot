@@ -50,12 +50,12 @@ class Server(object):
             self.log.info("GEventServer received raw request on pywsgi handler")
             response_future = taskpool.new_queue()
 
-            def finish_response(response_message):
+            def finish_response(handler_future):
                 import StringIO
                 stream = StringIO.StringIO()
-                message = response_message.value
-                if response_message.exception:
-                    erx = response_message.exception
+                message = handler_future.value
+                if handler_future.exception:
+                    erx = handler_future.exception
                     self.log.error(msg="Response message contains an exception. {0}".format(erx.message),
                                 exc_info=erx)
                     start_response('500 Internal Server Error', [])
@@ -78,13 +78,12 @@ class Server(object):
             else:
                 try:
                     # execute handler
-                    ar = taskpool.new_event()
-                    self.handler_resolver(request_message.type).process(request_message, ar)
-                    ar.rawlink(callback=finish_response)
+                    process_future = self.handler_resolver(request_message.type).process(message=request_message)
+                    process_future.on_complete(callback=finish_response)
                 except Exception as ex:
                     start_response('500 Internal Server error', [])
                     self.log.error(msg="Unhandled exception when processing message. Message id: {0}. Message type: {1}. Exception: {2}"
-                                .format(request_message.identifier, request_message.type, ex.message),
+                                   .format(request_message.identifier, request_message.type, ex.message),
                                 exc_info=ex)
                     response_future.put(item=StopIteration)
 

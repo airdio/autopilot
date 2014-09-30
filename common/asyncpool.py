@@ -10,11 +10,11 @@ from gevent import monkey
 monkey.patch_all()
 
 
-class CallableWaiter(AsyncResult):
+class CallableFuture(AsyncResult):
     class ValueWrapper(object):
         def __init__(self, result=None, exception=None):
             self.value = result
-            self.exception=exception
+            self.exception = exception
 
         def successful(self):
             return self.exception is None
@@ -23,7 +23,10 @@ class CallableWaiter(AsyncResult):
         AsyncResult.__init__(self)
 
     def __call__(self, result, exception=None):
-        AsyncResult.__call__(self, CallableWaiter.ValueWrapper(result=result, exception=exception))
+        AsyncResult.__call__(self, CallableFuture.ValueWrapper(result=result, exception=exception))
+
+    def on_complete(self, callback):
+        self.rawlink(callback=callback)
 
 
 class GeventPool(object):
@@ -34,8 +37,8 @@ class GeventPool(object):
         self.capacity = size
         self.pool = pool.Pool(self.capacity)
 
-    def new_event(self):
-        return CallableWaiter()
+    def callable_future(self):
+        return CallableFuture()
 
     def new_queue(self):
         return Queue()

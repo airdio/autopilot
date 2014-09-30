@@ -56,7 +56,7 @@ class Task(object):
     Models a runnable task
     """
     def __init__(self, apenv, name, wf_id, inf, properties, workflow_state):
-        self.log = logger.get_logger("Task")
+        self.log = logger.get_workflow_logger("Task")
         self.apenv = apenv
         self.name = name
         self.inf = inf

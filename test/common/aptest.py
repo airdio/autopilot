@@ -48,8 +48,8 @@ class APtest(unittest.TestCase):
 
     def get_default_apenv(self, wf_id, properties={}):
         apenv = ApEnv()
-        apenv.add(wf_id, {})
         apenv.update(properties)
+        apenv.add(wf_id, dict(inf={}))
         apenv.add_task_resolver(wf_id, TaskResolver(self))
         apenv.add_inf_resolver(wf_id, InfResolver())
         return apenv
@@ -68,11 +68,9 @@ class APtest(unittest.TestCase):
         ex = WorkflowExecutor(apenv=apenv, model=model)
         return model, ex
 
-
     def execute_workflow(self, executor, timeout=10):
-        wait_event = taskpool.new_event()
-        executor.execute(callback=wait_event)
-        wait_event.wait(timeout=timeout)
+        execute_future = executor.execute()
+        execute_future.wait(timeout=timeout)
 
     def create_specs(self, rspec_file, sspec_file):
         rspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org",

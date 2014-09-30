@@ -176,14 +176,16 @@ class ServerTest(APtest):
             self.exception = exception
             self.unhandled = unhandled
 
-        def work(self, ar, message):
+        def work(self, process_future, message):
             self.waiter.get(block=True, timeout=5)
             taskpool.doyield(1)
-            ar(result=message, exception=self.exception)
+            process_future(result=message, exception=self.exception)
 
-        def process(self, message, ar):
+        def process(self, message):
+            process_future = taskpool.callable_future()
             if self.unhandled:
                 raise Exception()
-            taskpool.spawn(func=self.work, args={"ar": ar, "message": message})
+            taskpool.spawn(func=self.work, args={"process_future": process_future, "message": message})
             taskpool.spawn(func=self.waiter.put, args={"item": 2})
+            return process_future
 

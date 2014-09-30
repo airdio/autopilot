@@ -226,9 +226,8 @@ class InstallRoleTest(APtest):
                             "stack": stack})
 
         handler = StackDeployHandler(apenv=apenv, message_type=msg.type)
-        wait_event = taskpool.new_event()
-        handler.process(message=msg, process_callback=wait_event)
-        response_message = wait_event.get(timeout=30)
+        future = handler.process(message=msg)
+        response_message = future.get(timeout=30)
         current_file_path = os.path.join(test_dir, stack.name, "hdfs", "hdfs", "current")
         self.at(response_message, "Response messae should not be None")
         with open(current_file_path) as f:
