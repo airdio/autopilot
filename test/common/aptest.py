@@ -3,6 +3,7 @@
 import os
 import unittest
 import uuid
+from autopilot.common import logger
 from autopilot.common import utils
 from autopilot.common.apenv import ApEnv
 from autopilot.common.asyncpool import taskpool
@@ -16,6 +17,11 @@ from autopilot.specifications.apspec import Apspec
 class APtest(unittest.TestCase):
     """ Base class for all autopilot unit tests
     """
+    test_logger = logger.get_test_logger()
+
+    def log(self, msg):
+        APtest.test_logger.info(msg)
+
     def ae(self, expected, actual, msg=None):
         self.assertEqual(expected, actual, msg)
 
@@ -31,6 +37,12 @@ class APtest(unittest.TestCase):
         agroup_names = [agroup.groupid for agroup in actual.groupset.groups for egroup in expected.groupset.groups
                         if egroup.groupid == agroup.groupid]
         self.ae(len(expected.groupset.groups), len(agroup_names))
+
+    def pool(self, func, args={}, callback=None, delay=0, wait_timeout=0):
+        gr = taskpool.spawn(func=func, args=args, callback=callback, delay=delay)
+        if wait_timeout > 0:
+            taskpool.doyield(seconds=wait_timeout)
+        return gr
 
     def get_aws_default_workflow_state(self):
         stack_spec = dict(materialized=dict(domain=dict(vpc_id="vpc-5c0eab39", internet_gateway_id="igw-c96eaaac"),

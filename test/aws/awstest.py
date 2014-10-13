@@ -18,25 +18,44 @@ class AWStest(APtest):
         return AWSInf(aws_access_key=aws_access_key,
                       aws_secret_key=aws_secret_key)
 
+    def delete_vpc_subnets(self, spec={}):
+        vpc = self. _get_vpc()
+        # disassociate all subnets and subnet related resources
+        subnets = spec.get("subnets", [])
+        if subnets:
+            for subnet in subnets:
+                sid = subnet.get("subnet_id")
+                raid = subnet.get("route_association_id")
+                rtid = subnet.get("route_table_id")
+
+                self.log("Deleting resources for subnet: {0}".format(sid))
+                if raid:
+                    self.log("Disassociate route {0} for subnet: {1}".format(raid, sid))
+                    vpc.conn.disassociate_route_table(association_id=raid)
+                if rtid:
+                    self.log("Delete route {0} for subnet: {1}".format(rtid, sid))
+                    vpc.conn.delete_route_table(route_table_id=rtid)
+
+                self.log("Deleting subnet: {0}".format(sid))
+                vpc.conn.delete_subnet(subnet_id=sid)
+
     def delete_vpc(self, spec={}):
         vpc = self. _get_vpc()
-        vpc_id = spec.get("vpc_id")
 
-        # delete_dependencies first:
+        # disassociate all subnets and subnet related resources
+        self.delete_vpc_subnets(spec=spec)
+
+        vpc_id = spec.get("vpc_id")
         security_group_id = spec.get("security_group_id", None)
-        subnet_id = spec.get("subnet_id", None)
         internet_gateway_id = spec.get("internet_gateway_id", None)
         route_table_id = spec.get("route_table_id", None)
         route_association_id = spec.get("route_association_id", None)
-
         if security_group_id:
             vpc.conn.delete_security_group(group_id=security_group_id)
         if route_association_id:
             vpc.conn.disassociate_route_table(association_id=route_association_id)
         if route_table_id:
             vpc.conn.delete_route_table(route_table_id=route_table_id)
-        if subnet_id:
-            vpc.conn.delete_subnet(subnet_id=subnet_id)
         if internet_gateway_id:
             vpc.conn.detach_internet_gateway(internet_gateway_id=internet_gateway_id, vpc_id=vpc_id)
             vpc.conn.delete_internet_gateway(internet_gateway_id=internet_gateway_id)

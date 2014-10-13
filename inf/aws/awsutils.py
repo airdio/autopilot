@@ -96,6 +96,11 @@ class EasyAWS(object):
             self._conn.https_validate_certificates = validate_certs
         return self._conn
 
+    def add_tags(self, aws_object, tags):
+        if tags:
+            for (tag, val) in tags.items():
+                aws_object.add_tag(tag, val)
+
 
 class EasyEC2(EasyAWS):
     def __init__(self, aws_access_key_id, aws_secret_access_key,
@@ -1534,7 +1539,7 @@ class EasyVPC(EasyAWS):
         self.ec2_conn = self._get_ec2(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                                       aws_region_name="us-east-1")
 
-    def create_vpc(self, cidr_block,  new_internet_gateway=True):
+    def create_vpc(self, cidr_block,  new_internet_gateway=True, tags=None):
         """
         Create a new VPC and an internet gateway and associate the gateway with the VPC
         """
@@ -1543,6 +1548,7 @@ class EasyVPC(EasyAWS):
         vpc = self.conn.create_vpc(cidr_block=cidr_block)
         self.conn.modify_vpc_attribute(vpc.id, enable_dns_support=True)
         self.conn.modify_vpc_attribute(vpc.id, enable_dns_hostnames=True)
+        self.add_tags(vpc, tags)
         data["vpc"] = vpc
 
         if new_internet_gateway:
@@ -1709,10 +1715,3 @@ class EasyS3(EasyAWS):
         bucket = self.get_bucket(bucketname)
         files = [file for file in bucket.list()]
         return files
-
-
-if __name__ == "__main__":
-    from starcluster.config import get_easy_ec2
-    ec2 = get_easy_ec2()
-    ec2.list_all_instances()
-    ec2.list_registered_images()

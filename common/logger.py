@@ -70,6 +70,15 @@ def get_workflow_logger(name=None):
     return WfLogger(get_logger(name))
 
 
+def get_test_logger():
+    testlogger = logging.getLogger('aptest')
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+    ch.setFormatter(formatter)
+    testlogger.addHandler(ch)
+    return  testlogger
+
 def _setup_parent_logger(console=False):
     logger = get_logger()
     logger.setLevel(logging.DEBUG)

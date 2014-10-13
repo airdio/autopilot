@@ -1,6 +1,7 @@
 #! /user/bin python
 
 import time
+from autopilot.common import logger
 from autopilot.common import exception
 from autopilot.common.utils import Dct
 from autopilot.common.asyncpool import taskpool
@@ -39,8 +40,10 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
         """
         if self.yield_until_instances_in_state(state="running", timeout=timeout, interval=interval):
             self.close()
+            return True
         else:
             self.close(new_errors=[exception.AWSInstanceProvisionTimeout(self.reservation.instances)])
+            return False
 
     def yield_until_instances_in_state(self, state="running", timeout=180, interval=10):
         """
@@ -66,6 +69,7 @@ class AWSInf(Inf):
     """
     def __init__(self, aws_access_key=None, aws_secret_key=None):
         Inf.__init__(self)
+        self.log = logger.get_logger("AWSInf")
         self.aws_access_key = aws_access_key
         self.aws_secret_key = aws_secret_key
         self.vpc_conn = self._get_vpc()
@@ -82,12 +86,16 @@ class AWSInf(Inf):
         2. Internet gateway with internet routing enabled and attach to the VPC
         """
         rc = AWSInfResponseContext(aws_inf=self, spec=domain_spec)
+        domain = domain_spec.get("domain")
+        self.log.info("Init Domain for: {0}".format(domain))
         # check if we already have a vpc_id in the domain_Spec.
         # todo: check with aws if the vpc is actually present
         if not domain_spec.get('vpc_id'):
             try:
+                self.log.info("Creating VPC for domain: {0}".format(domain))
                 # create a vpc and a default internet gateway
-                data = self.vpc_conn.create_vpc(cidr_block=Dct.get(domain_spec, "cidr", "10.0.0.0/16"))
+                data = self.vpc_conn.create_vpc(cidr_block=Dct.get(domain_spec, "cidr", "10.0.0.0/16"),
+                                                tags=dict(Name=domain))
                 domain_spec["vpc_id"] = data["vpc"].id
                 domain_spec["internet_gateway_id"] = data["internet_gateway"].id
             except Exception, e:

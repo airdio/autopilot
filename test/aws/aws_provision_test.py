@@ -29,19 +29,22 @@ class AwsProvisionTests(AWStest):
         instance2 = type('', (object, ), {"state": "success", "update": update})()
         reservation = type('', (object, ), {"instances": [instance1, instance2]})()
         response = AwsInfProvisionResponseContext({}, reservation=reservation)
-        self.af(response.wait(timeout=2, interval=1))
+        self.af(self.pool(response.close_on_instances_ready,
+                          args=dict(timeout=1, interval=1), wait_timeout=3).get())
 
-        instance1 = type('', (object, ), {"state": "success", "update": update})()
-        instance2 = type('', (object, ), {"state": "success", "update": update})()
+        instance1 = type('', (object, ), {"state": "running", "update": update})()
+        instance2 = type('', (object, ), {"state": "running", "update": update})()
         reservation = type('', (object, ), {"instances": [instance1, instance2]})()
         response = AwsInfProvisionResponseContext({}, reservation=reservation)
-        self.at(response.wait(timeout=2, interval=1))
+        self.log("Waiting for response to finish")
+        self.at(self.pool(response.close_on_instances_ready,
+                          args=dict(timeout=1, interval=1), wait_timeout=3).get())
 
-    def _test_init_domain(self):
+    def test_init_domain(self):
         a = self.get_aws_inf()
         domain_spec = {
             "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
-            "domain": "*.aptest.com",
+            "domain": "any.aptest.com",
         }
 
         try:
@@ -51,8 +54,9 @@ class AwsProvisionTests(AWStest):
             self.at(len(rc.spec["internet_gateway_id"]) > 0, "internet_gateway_id")
         finally:
             self.delete_vpc(domain_spec)
+            pass
 
-    def _test_init_stack(self):
+    def test_init_stack(self):
         """
         test stack initialization
         """
@@ -60,7 +64,7 @@ class AwsProvisionTests(AWStest):
         domain_spec = {
             #"uname": "test_{0}".format(Utils.get_utc_now_seconds()),
             "uname": "used_for_aptest_only",
-            "domain": "*.aptest.com",
+            "domain": "any.aptest.com",
         }
         rc_stack = None
         try:
@@ -70,8 +74,7 @@ class AwsProvisionTests(AWStest):
                 "uname": "used_for_aptest_only",
                 "vpc_id": rc_domain.spec["vpc_id"],
                 "internet_gateway_id": rc_domain.spec["internet_gateway_id"],
-                "cidr": "10.0.0.0/24",
-                "subnets": rc_domain.spec["subnets"]
+                "cidr": "10.0.0.0/24"
             }
             rc_stack = a.init_stack(domain_spec=domain_spec, stack_spec=stack_spec)
             subnets = rc_stack.spec["subnets"]
@@ -82,9 +85,10 @@ class AwsProvisionTests(AWStest):
             self.at(first_subnet.get("subnet_id"))
             self.at(first_subnet.get("route_table_id"))
             self.at(first_subnet.get("route_association_id"))
+            print rc_stack.spec
         finally:
-            if rc_stack:
-                self.delete_vpc(rc_stack.spec)
+            self.delete_vpc(rc_stack.spec)
+            pass
 
     def test_instance_provision(self):
         """

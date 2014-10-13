@@ -17,18 +17,6 @@ class InfResponseContext(object):
             # close after updating the spec and errors
             self.closed = True
 
-        def wait(self, timeout=30, interval=1):
-            """
-            gevent based wait. gevent.sleep will yield
-            Should mostly be used for testing. Production code should not wait
-            """
-            #todo: warn if called in non-dev deployments
-            tries = timeout/interval
-            while tries > 0 and not self.closed:
-                tries -= 1
-                gevent.sleep(interval)
-
-
 class Inf(object):
     """
     Interface for Inf functions
@@ -57,7 +45,7 @@ class Inf(object):
         """
         pass
 
-    def provision_instances(self, domain_spec, stack_spec, role_spec={}, tags=[]):
+    def provision_instances(self, domain_spec, stack_spec, instance_spec={}):
         """
         Provision the role as per spec
         """
