@@ -18,7 +18,7 @@ class AWStest(APtest):
         return AWSInf(aws_access_key=aws_access_key,
                       aws_secret_key=aws_secret_key)
 
-    def delete_vpc_subnets(self, spec={}):
+    def delete_vpc_subnets(self, spec=None):
         vpc = self. _get_vpc()
         # disassociate all subnets and subnet related resources
         subnets = spec.get("subnets", [])
@@ -39,7 +39,27 @@ class AWStest(APtest):
                 self.log("Deleting subnet: {0}".format(sid))
                 vpc.conn.delete_subnet(subnet_id=sid)
 
-    def delete_vpc(self, spec={}):
+    def terminate_instances(self, spec=None):
+        ec2 = self._get_ec2()
+        instances = spec.get("instances")
+        instance_ids = [instance.get("instance_id") for instance in instances]
+        self.log("Terminating instances: {0}".format(instance_ids))
+        self.terminate_instances_by_ids(instance_ids=instance_ids)
+
+        sgids = spec.get("security_group_ids")
+        if sgids:
+            for sgid in sgids:
+                self.log("Deleting security group: {0}".format(sgid))
+                ec2.delete_group(group_id=sgid, retry_count=24)
+
+    def terminate_instances_by_ids(self, instance_ids):
+        ec2 = self._get_ec2()
+        instances = ec2.get_all_instances(instance_ids=instance_ids)
+        ec2.terminate_instances(instances=instance_ids)
+        self.yield_until_instances_in_state(instances=instances, state="terminated")
+        self.doyield()
+
+    def delete_vpc(self, spec=None):
         vpc = self. _get_vpc()
 
         # disassociate all subnets and subnet related resources
@@ -62,12 +82,6 @@ class AWStest(APtest):
 
         # delete the vpc
         vpc.conn.delete_vpc(vpc_id=vpc_id)
-
-    def terminate_instances(self, instance_ids):
-        ec2 = self._get_ec2()
-        instances = ec2.get_all_instances(instance_ids=instance_ids)
-        ec2.terminate_instances(instances=instance_ids)
-        self.yield_until_instances_in_state(instances=instances, state="terminated")
 
     def all_instances_in_state(self, instances, state="running"):
         for instance in instances:
@@ -97,6 +111,12 @@ class AWStest(APtest):
 
         ssh = SSHClient(host=host, username=username, private_key=key_pair)
         return ssh.execute(command)
+
+    def fail_on_errors(self, provision_spec):
+        if provision_spec.errors:
+            for error in provision_spec.errors:
+                self.log(error.message, error=True)
+            self.fail("Errors. Count: {0}".format(len(provision_spec.errors)))
 
     def _get_ec2(self):
         aws_access_key = os.environ["AWS_ACCESS_KEY"]

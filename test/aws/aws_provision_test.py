@@ -6,12 +6,7 @@ import sys
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
 import gevent
 import gevent.monkey
-from autopilot.common.apenv import ApEnv
 from autopilot.inf.aws.awsinf import AwsInfProvisionResponseContext
-from autopilot.workflows.tasks.task import TaskState
-from autopilot.workflows.workflowexecutor import WorkflowExecutor
-from autopilot.workflows.workflowmodel import WorkflowModel
-from autopilot.specifications.tasks.deployrole import DeployRole, DomainInit, StackInit
 from autopilot.test.common.utils import Utils
 from autopilot.test.aws.awstest import AWStest
 # monkey patch
@@ -49,7 +44,7 @@ class AwsProvisionTests(AWStest):
 
         try:
             rc = a.init_domain(domain_spec=domain_spec)
-            self.ae(len(rc.errors), 0, "errors found")
+            self.fail_on_errors(rc)
             self.at(len(rc.spec["vpc_id"]) > 0, "vpc_id")
             self.at(len(rc.spec["internet_gateway_id"]) > 0, "internet_gateway_id")
         finally:
@@ -77,10 +72,10 @@ class AwsProvisionTests(AWStest):
                 "cidr": "10.0.0.0/24"
             }
             rc_stack = a.init_stack(domain_spec=domain_spec, stack_spec=stack_spec)
+            self.fail_on_errors(rc_stack)
+
             subnets = rc_stack.spec["subnets"]
             first_subnet = subnets[0]
-
-            self.ae(0, len(rc_stack.errors), "errors found")
             self.ae(1, len(subnets), "subnets")
             self.at(first_subnet.get("subnet_id"))
             self.at(first_subnet.get("route_table_id"))
@@ -95,7 +90,6 @@ class AwsProvisionTests(AWStest):
         Test instance provision
         """
         aws_inf = self.get_aws_inf()
-        reservation = None
         rc_instances = None
         try:
             domain_spec = {
@@ -113,7 +107,7 @@ class AwsProvisionTests(AWStest):
                 "uname": "test_{0}".format(Utils.get_utc_now_seconds()),
                 "image_id": "ami-a25415cb",
                 "instance_type": "m1.medium",
-                "key_pair_name": "aptest",
+                "key_pair_name": "ocg-test",
                 "instance_count": 2,
                 "associate_public_ip": True,
                 "auth_spec": [{"protocol": "tcp", "from": 80, "to": 80},
@@ -121,43 +115,21 @@ class AwsProvisionTests(AWStest):
             }
             rc_instances = aws_inf.provision_instances(domain_spec=domain_spec, stack_spec=stack_spec,
                                                        instance_spec=instance_spec)
-            reservation = rc_instances.spec["reservation"]
 
+            self.fail_on_errors(rc_instances)
+
+            instances = rc_instances.spec.get("instances")
             self.at(rc_instances.spec["security_group_ids"])
-            self.ae(2, len(reservation.instances))
-            # self.at(len(self.ssh_command(host=instances[0].ip_address)) > 0)
+            self.ae(2, len(instances))
+            self.at(instances[0].get('public_dns_name'))
+            self.at(instances[0].get('private_dns_name'))
+            self.at(instances[0].get('public_ip_address'))
+            self.at(instances[0].get('private_ip_address'))
+            self.at(instances[1].get('public_dns_name'))
+            self.at(instances[1].get('private_dns_name'))
+            self.at(instances[1].get('public_ip_address'))
+            self.at(instances[1].get('private_ip_address'))
         finally:
+            if rc_instances:
+                self.terminate_instances(rc_instances.spec)
             pass
-            if reservation and reservation.instances:
-                self.terminate_instances([instance.id for instance in reservation.instances])
-            #if rc_instances.spec:
-                #self.delete_vpc(rc_instances.spec)
-
-    def test_deploy_role(self):
-        workflow_state = self.get_aws_default_workflow_state()
-        (model, ex) = self.get_default_model("stack_deploy1.wf", workflow_state=workflow_state)
-        instances = None
-        try:
-            self.execute_workflow(ex, timeout=300)
-            print ex.workflow_state
-            self.ae(True, ex.success)
-            for group in ex.groupset.groups:
-                for task in group.tasks:
-                    self.ae(TaskState.Done, task.result.state, "task should be in Done state")
-
-            role_groups = workflow_state.get("stack_spec").get("materialized").get("role_groups")
-            for (key, role_group) in ex.workflow_state['role_groups'].items():
-                instances = [interface["instance_id"] for interface in role_group['instances']['interfaces']]
-        finally:
-            if instances:
-                self.terminate_instances(instances)
-
-    def get_DeployRole(self, apenv, inf, wf_id, properties, workflow_state):
-        return DeployRole(apenv, wf_id, inf, properties, workflow_state)
-
-    def get_DomainInit(self, apenv, inf, wf_id, properties, workflow_state):
-        return DomainInit(apenv, wf_id, inf, properties, workflow_state)
-
-    def get_StackInit(self, apenv, inf, wf_id, properties, workflow_state):
-        return StackInit(apenv, wf_id, inf, properties, workflow_state)
-

@@ -19,8 +19,11 @@ class APtest(unittest.TestCase):
     """
     test_logger = logger.get_test_logger()
 
-    def log(self, msg):
-        APtest.test_logger.info(msg)
+    def log(self, msg, error=False):
+        if error:
+            APtest.test_logger.error(msg=msg)
+        else:
+            APtest.test_logger.info(msg)
 
     def ae(self, expected, actual, msg=None):
         self.assertEqual(expected, actual, msg)
@@ -43,6 +46,9 @@ class APtest(unittest.TestCase):
         if wait_timeout > 0:
             taskpool.doyield(seconds=wait_timeout)
         return gr
+
+    def doyield(self, seconds=5):
+        taskpool.doyield(seconds=seconds)
 
     def get_aws_default_workflow_state(self):
         stack_spec = dict(materialized=dict(domain=dict(vpc_id="vpc-5c0eab39", internet_gateway_id="igw-c96eaaac"),

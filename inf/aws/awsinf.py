@@ -11,7 +11,7 @@ from autopilot.inf.aws import awsexception
 
 
 class AWSInfResponseContext(InfResponseContext):
-    def __init__(self, aws_inf, spec):
+    def __init__(self, spec):
         """
         Response context base class for tracking AWS resquests
         """
@@ -22,9 +22,10 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
     """
     Response Context object to track AWS instance provisioning requests
     """
-    def __init__(self, aws_inf, spec, reservation):
-        AWSInfResponseContext.__init__(self, aws_inf=aws_inf, spec=spec)
+    def __init__(self, spec, reservation=None):
+        AWSInfResponseContext.__init__(self, spec=spec)
         self.reservation = reservation
+        self.log = logger.get_logger("ResponseContext")
 
     def all_instances_in_state(self, state="running"):
         for instance in self.reservation.instances:
@@ -39,9 +40,12 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
         Close when all instances are running
         """
         if self.yield_until_instances_in_state(state="running", timeout=timeout, interval=interval):
+            self.log.debug("Instances in state: running")
             self.close()
             return True
         else:
+            self.log.warning("Timedout waiting for instances to be in running state. timeout: {0}. Interval: {1}"
+                             .format(timeout, interval))
             self.close(new_errors=[exception.AWSInstanceProvisionTimeout(self.reservation.instances)])
             return False
 
@@ -49,9 +53,11 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
         """
         Yield until all instances are in a specified state
         """
+        self.log.debug("yield_until_instances_in_state: {0} {1}".format(timeout, interval))
         max_tries = timeout/interval
         attempt = 0
         while attempt < max_tries:
+            self.log.debug("yield_until_instances_in_state. Try count {0} out of {1}".format(attempt, max_tries))
             attempt += 1
             if not self.all_instances_in_state(state=state):
                 taskpool.doyield(seconds=interval)
@@ -78,14 +84,14 @@ class AWSInf(Inf):
     def serialize(self):
         return dict(target="aws", properties=dict(aws_access_key="", aws_secret_key=""))
 
-    def init_domain(self, domain_spec={}):
+    def init_domain(self, domain_spec):
         """
         Create a private cluster environment based on the spec.
         At minimum this will create:
         1. VPC
         2. Internet gateway with internet routing enabled and attach to the VPC
         """
-        rc = AWSInfResponseContext(aws_inf=self, spec=domain_spec)
+        rc = AWSInfResponseContext(spec=domain_spec)
         domain = domain_spec.get("domain")
         self.log.info("Init Domain for: {0}".format(domain))
         # check if we already have a vpc_id in the domain_Spec.
@@ -99,18 +105,19 @@ class AWSInf(Inf):
                 domain_spec["vpc_id"] = data["vpc"].id
                 domain_spec["internet_gateway_id"] = data["internet_gateway"].id
             except Exception, e:
+                self.log.error("Error initializing domain", exc_info=e)
                 rc.errors.extend(e)
 
         # return updated spec
         rc.close(new_spec=domain_spec)
         return rc
 
-    def init_stack(self, domain_spec, stack_spec={}):
+    def init_stack(self, domain_spec, stack_spec):
         """
         Create subnets attached to the VPC and add new route table. Route subnet traffic to the
         internet gateway. Assumes an existing VPC.
         """
-        rc = AWSInfResponseContext(aws_inf=self, spec=stack_spec)
+        rc = AWSInfResponseContext(spec=stack_spec)
 
         # check if we have subnets
         # todo: acually check with aws if subnets are up and running
@@ -136,13 +143,13 @@ class AWSInf(Inf):
         rc.close(new_spec=stack_spec)
         return rc
 
-    def delete_domain(self, domain_spec={}, delete_dependencies=False):
+    def delete_domain(self, domain_spec, delete_dependencies=False):
         """
         Delete the cluster
         """
         self.vpc_conn.delete_vpc(vpc_id=Dct.get(domain_spec, "vpc_id"), force=delete_dependencies)
 
-    def provision_instances(self, domain_spec, stack_spec, instance_spec={}):
+    def provision_instances(self, domain_spec, stack_spec, instance_spec):
         """
         We need a subnet in the the instance_spec
         1. Create default security group with inbound traffic for:
@@ -153,6 +160,7 @@ class AWSInf(Inf):
         """
 
         # required parameters
+        domain_name = domain_spec.get("domain")
         vpc_id = domain_spec.get("vpc_id")
         subnet_id = stack_spec.get("subnets")[0]
         uname = Dct.get(instance_spec, "uname")
@@ -164,43 +172,49 @@ class AWSInf(Inf):
         auth_spec = Dct.get(instance_spec, "auth_spec")
         tags = instance_spec.get('tags', {})
 
-        # create a security group
-        sg = self.ec2_conn.get_or_create_group("sg_{0}".format(uname),
-                                               description="security group for {0}".format(uname),
-                                               auth_ssh=True, vpc_id=vpc_id, auth_spec=auth_spec)
-        instance_spec["security_group_ids"] = [sg.id]
+        self.log.info("Provision Instances: {0} for domain:{1}".format(instance_count, domain_name))
+        rc = AwsInfProvisionResponseContext(spec=instance_spec)
+        try:
 
-        # schedule instance creation.
-        reservation = self.ec2_conn.request_instances(image_id=image_id,
-                                                      instance_type=instance_type,
-                                                      key_name=key_pair_name,
-                                                      max_count=instance_count,
-                                                      security_group_ids=instance_spec["security_group_ids"],
-                                                      subnet_id=subnet_id,
-                                                      associate_public_ip=associate_public_ip,
-                                                      tags=tags)
+            # create a security group
+            self.log.info("Create Security group for domain:{0}".format(domain_name))
+            sg = self.ec2_conn.get_or_create_group("sg_{0}".format(uname),
+                                                   description="security group for {0}".format(uname),
+                                                   auth_ssh=True, vpc_id=vpc_id, auth_spec=auth_spec)
+            instance_spec["security_group_ids"] = [sg.id]
 
-        # create a response context
-        rc = AwsInfProvisionResponseContext(aws_inf=self, spec=instance_spec, reservation=reservation)
-        rc.close_on_instances_ready()
-        self._fill_instance_details(vpc_id, subnet_id, reservation.instances, instance_spec)
+            # schedule instance creation.
+            self.log.info("Request Instances:{0} for domain:{1}".format(instance_count, domain_name))
+            rc.reservation = self.ec2_conn.request_instances(image_id=image_id,
+                                                             instance_type=instance_type,
+                                                             key_name=key_pair_name,
+                                                             max_count=instance_count,
+                                                             security_group_ids=instance_spec["security_group_ids"],
+                                                             subnet_id=subnet_id,
+                                                             associate_public_ip=associate_public_ip,
+                                                             tags=tags)
+
+            self.log.info("Waiting for instances to be ready")
+            rc.close_on_instances_ready()
+
+            self._fill_instance_details(rc.reservation.instances, instance_spec)
+        except Exception, e:
+            self.log.debug(msg="Failed provisioning instances", exc_info=e)
+            rc.errors.extend(e)
 
         # return the context
         return rc
 
 
-    def _fill_instance_details(self, vpc_id, subnet_id, instances, instance_spec):
-        nspec = {}
-        interfaces = []
-
+    def _fill_instance_details(self, instances, instance_spec):
+        instance_spec['instances'] = []
         for instance in instances:
             instance.update()
-            interfaces.append({'instance_id': instance.id, 'public_dns_name': instance.public_dns_name,
-                               'private_dns_name': instance.private_dns_name,
-                               'public_ip_address': instance.ip_address,
-                               'private_ip_address': instance.private_ip_address})
-        nspec.update({'interfaces': interfaces})
-        instance_spec['instances'] = nspec
+            instance_spec['instances'].append({'instance_id': instance.id,
+                                               'public_dns_name': instance.public_dns_name,
+                                               'private_dns_name': instance.private_dns_name,
+                                               'public_ip_address': instance.ip_address,
+                                               'private_ip_address': instance.private_ip_address})
 
     def _get_ec2(self):
         return awsutils.EasyEC2(aws_access_key_id=self.aws_access_key,

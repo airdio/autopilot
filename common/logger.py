@@ -71,7 +71,7 @@ def get_workflow_logger(name=None):
 
 
 def get_test_logger():
-    testlogger = logging.getLogger('aptest')
+    testlogger = logging.getLogger('APTest')
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
@@ -87,7 +87,7 @@ def _setup_parent_logger(console=False):
     else:
         ch = logging.FileHandler('/tmp/autopilot.log')
     ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
     return logger
@@ -96,3 +96,4 @@ _setup_parent_logger()
 log = ApLogger(get_logger("Autopilot"))
 wflog = get_workflow_logger("Workflow")
 aglog = ApLogger(get_logger("Agent"))
+logging.getLogger('boto').setLevel(logging.CRITICAL)
