@@ -3,7 +3,8 @@
 
 
 import os
-import subprocess
+from autopilot.common.asyncpool import taskpool
+
 import re
 import sys
 import zlib
@@ -18,14 +19,12 @@ import StringIO
 import calendar
 import urlparse
 from datetime import datetime
-
 import iptools
 import iso8601
 import decorator
-
+import subprocess
 from autopilot.common.logger import log
 from autopilot.common import exception
-from autopilot.common.asyncpool import taskpool
 
 
 def subprocess_cmd(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,

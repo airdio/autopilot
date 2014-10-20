@@ -3,12 +3,12 @@ import sys
 import os
 sys.path.append(os.environ['AUTOPILOT_HOME'] + '/../')
 import json
+from autopilot.common.asyncpool import taskpool
 from autopilot.common import exception
 from autopilot.common import utils
 from autopilot.common.apenv import ApEnv
 from autopilot.test.common.aptest import APtest
 from autopilot.agent.installers.InstallProviders import GitInstallProvider
-from autopilot.common.asyncpool import taskpool
 
 
 class PythonInstallProviderTest(APtest):

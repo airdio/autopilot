@@ -1,3 +1,3 @@
 #! /bin/sh
 
-AUTOPILOT_HOME=`pwd`
+export AUTOPILOT_HOME=`pwd`

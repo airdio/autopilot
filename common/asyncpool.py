@@ -1,13 +1,12 @@
 #! /usr/bin/python
 
 import gevent
+from gevent import monkey
+monkey.patch_all()
 import gevent.event
+from gevent import pool
 from gevent.queue import Queue
 from gevent.event import AsyncResult
-from gevent import pool
-from gevent import monkey
-
-monkey.patch_all()
 
 
 class CallableFuture(AsyncResult):
