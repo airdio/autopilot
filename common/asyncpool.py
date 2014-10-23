@@ -2,7 +2,7 @@
 
 import gevent
 from gevent import monkey
-monkey.patch_all()
+monkey.patch_all(subprocess=True)
 import gevent.event
 from gevent import pool
 from gevent.queue import Queue
