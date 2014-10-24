@@ -1,0 +1,7 @@
+language: python
+python:
+  - "2.7"
+# command to install dependencies
+install: "/bin/sh setup/install_libs.sh && pip install -r setup/requirements.txt"
+# command to run tests
+script: pushd ./test/agent/ && nosetests -s

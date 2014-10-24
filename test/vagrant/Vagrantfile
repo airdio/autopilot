@@ -4,6 +4,7 @@ VAGRANTFILE_API_VERSION = "2"
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "centos65"
   # https://cloud-images.ubuntu.com/vagrant/saucy/20140416/saucy-server-cloudimg-amd64-vagrant-disk1.box
+  config.vm.synced_folder "./../../../autopilot", "/home/vagrant/autopilot"
   config.vm.define "master" do |master|
     master.vm.hostname = "master"
     master.vm.network :private_network, ip: "10.10.10.5"
