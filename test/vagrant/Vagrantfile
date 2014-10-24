@@ -1,0 +1,19 @@
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "centos65"
+  # https://cloud-images.ubuntu.com/vagrant/saucy/20140416/saucy-server-cloudimg-amd64-vagrant-disk1.box
+  config.vm.define "master" do |master|
+    master.vm.hostname = "master"
+    master.vm.network :private_network, ip: "10.10.10.5"
+    # master.vm.network "public_network"
+    master.vm.provision "shell" do |s|
+      s.path="install_req.sh"
+    end
+    master.vm.provider :virtualbox do |vb|
+      vb.memory=2048
+      vb.cpus = 2
+    end
+  end
+end
