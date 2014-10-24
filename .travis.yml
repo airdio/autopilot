@@ -10,4 +10,4 @@ before_install:
 install: "pip install -r setup/requirements.txt"
 
 # command to run tests
-script: "pushd ./test/agent/ && nosetests -s"
+script: "source autopilot_env.sh && pushd ./test/agent/ && nosetests -s"
