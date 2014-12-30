@@ -56,11 +56,20 @@ class RemoteCommandNotFound(CommandNotFound):
         self.message = "command not found on remote system: '%s'" % cmd
 
 
-class AWSInstanceProvisionTimeout(AutopilotException):
-    def __init__(self, instances):
-        self.message = "Timedout waiting for instances to start"
+class AWSOperationException(AutopilotException):
+    def __init__(self, msg, inner_exception=None, instances=None):
+        AutopilotException.__init__(self, msg, inner_exception=inner_exception)
         self.instances = instances
 
+
+class AWSInstanceProvisionTimeout(AWSOperationException):
+    def __init__(self, msg, inner_exception=None, instances=None):
+        AWSOperationException.__init__(self, msg, inner_exception=inner_exception, instances=instances)
+
+
+class AWSPropogationException(AWSOperationException):
+    def __init__(self, msg, inner_exception=None, instances=None):
+        AWSOperationException.__init__(self, msg, inner_exception=inner_exception, instances=instances)
 
 class SSHError(AutopilotException):
     """Base class for all SSH related errors"""

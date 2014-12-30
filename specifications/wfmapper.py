@@ -8,11 +8,9 @@ from autopilot.specifications.tasks.deployrole import DomainInit, StackInit, Dep
 
 class StackMapper(object):
     """
-    Mapper class that merges role spec, stack spec and stack state into a workflow spec
+    Mapper class that maps stack spec into a workflow spec
     """
-    def __init__(self, apenv, wf_id, org, domain, owner, stack_spec,
-                 roles_spec, stack_state={}):
-        self.type = 'stack'
+    def __init__(self, apenv, wf_id, org, domain, owner, stack_spec, stack_state={}):
         self.apenv = apenv
         self.wf_id = wf_id
         self.type = 'stack.deploy'
@@ -21,7 +19,6 @@ class StackMapper(object):
         self.org = org
         self.domain = domain
         self.stack_spec = stack_spec
-        self.roles_spec = roles_spec
         self.stack_state = stack_state
         self.inf = self._resolve_inf()
         self.taskgroups = self._build_task_groups()
@@ -94,14 +91,7 @@ class StackMapper(object):
         # after they are sorted
         ordered_role_groups.sort(cmp=_role_group_cmp)
         for role_group in ordered_role_groups:
-            properties = dict(stack_spec=self.stack_spec)
-            # clear the roles list
-            role_group.roles = []
-            for roleref in role_group.rolerefs:
-                role_group.roles.append(self.roles_spec.roles.get(roleref))
-
-
-            properties.update(dict(role_group=role_group))
+            properties = dict(stack_spec=self.stack_spec, role_group=role_group)
             task = DeployRole(apenv=self.apenv, wf_id=self.wf_id, inf=self.inf,
                               properties=properties, workflow_state=self.stack_state)
 
@@ -112,19 +102,16 @@ class StackMapper(object):
         # for parallel role groups we only need one task group
         parallel_tasks = []
         for role_group in parallel_role_groups:
-            properties = dict(stack_spec=self.stack_spec)
-            # clear the roles list
-            role_group.roles = []
-            for roleref in role_group.rolerefs:
-                role_group.roles.append(self.roles_spec.roles.get(roleref))
-            properties.update(dict(role_group=role_group))
+            properties = dict(stack_spec=self.stack_spec, role_group=role_group)
 
             task = DeployRole(apenv=self.apenv, wf_id=self.wf_id, inf=self.inf,
-                              properties=properties, workflow_state=self.stack_state)
+                              properties=properties,
+                              workflow_state=self.stack_state)
             parallel_tasks.append(task)
 
         if parallel_tasks:
             groups.append(Group(wf_id=self.wf_id, apenv=self.apenv,
-                                groupid="parallel_deploy_roles", tasks=parallel_tasks))
+                                groupid="parallel_deploy_roles",
+                                tasks=parallel_tasks))
 
         return GroupSet(groups)

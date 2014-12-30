@@ -7,20 +7,24 @@ apspec:
     domain: dev.marketing.contoso.com
     name: hadoop-base
     description: "hadoop base install"
+    deploy:
+        git: https://github.com/opencognitions/fortestsonly.git
+        branch: dev
     role-groups:
         hdfs:
             order: 1
             instance:
-                id: ami-a25415cb
-                type: m3.4xlarge
+                id: ami-a8d369c0
+                type: t2.micro
                 count: 5
                 tags:
                     type: 1
+                volume:
             roles: [hdfs, yarn]
         zk:
             instance:
-                id: ami-a25415cb
-                type: m3.2xlarge
+                id: ami-a8d369c0
+                type: t2.micro
                 count: 3
                 routable: true
                 ports: [50070, 8032]

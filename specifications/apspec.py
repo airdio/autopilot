@@ -31,59 +31,25 @@ class Apspec(object):
         return func(apenv, org, domain, spec_dct)
 
     @staticmethod
-    def _resolve_roles_spec(apenv, org, domain, spec_dct):
-        return Rolespec(apenv=apenv, org=org, domain=domain, type=spec_dct.get('type'),
-                        description=spec_dct.get('description', None), rolesd=spec_dct.get("roles"))
-
-    @staticmethod
     def _resolve_stack_spec(apenv, org, domain, spec_dct):
         return Stackspec(apenv=apenv, org=org, domain=domain, type=spec_dct.get('type'),
                          inf=spec_dct.get('infrastructure'), name=spec_dct.get('name'),
-                         description=spec_dct.get('description'), groupsd=spec_dct.get("role-groups"))
-
-class Rolespec(Apspec):
-    """
-    Define roles
-    """
-    def __init__(self, apenv, org, domain, type, description, rolesd):
-        Apspec.__init__(self, apenv=apenv, org=org, domain=domain, type=type,
-                        description=description)
-        self.roles = Rolespec._resolve_roles(rolesd)
-
-    def todict(self):
-        d = Apspec.todict(self)
-        d.update(roles={})
-        for (role, val) in self.roles.items():
-            d["roles"].update(val.todict())
-        return d
-
-    @staticmethod
-    def _resolve_roles(rolesd):
-        roles = {}
-        for (role, val) in rolesd.items():
-            roles[role] = Role(role, val.get('version'), val.get('deploy'))
-        return roles
-
-
-class Role(object):
-    def __init__(self, name, version, deploy):
-        self.name = name
-        self.version = version
-        self.deploy = deploy
-
-    def serialize(self):
-        return dict(name=self.name, version=self.version, deploy=self.deploy)
+                         description=spec_dct.get('description'),
+                         deployd=spec_dct.get('deploy'),
+                         groupsd=spec_dct.get("role-groups"))
 
 
 class Stackspec(Apspec):
     """
     Define the stack
     """
-    def __init__(self, apenv, org, domain, type, inf, name, description, groupsd):
+    def __init__(self, apenv, org, domain, type, inf, name, description, deployd, groupsd):
         Apspec.__init__(self, apenv=apenv, org=org, domain=domain,
                         type=type, inf=inf, description=description)
         self.name = name
+        self.deploy = StackDeploy(deployd=deployd)
         self.groups = self._resolve_role_groups(groupsd)
+
 
     def serialize(self):
         rd = dict()
@@ -99,22 +65,24 @@ class Stackspec(Apspec):
         return rg
 
 
+class StackDeploy(object):
+    def __init__(self, deployd):
+        self.git = deployd.get('git')
+        self.branch = deployd.get('branch')
+        self.metafile = deployd.get('metafile', "meta.yml")
+
 class Rolegroup(object):
-    def __init__(self, name, refsd={}):
+    def __init__(self, name, refsd):
         self.name = name
         self.order = refsd.get('order')
         self.instanced = refsd.get('instance')
-        # rolerefs will only have role name
-        self.rolerefs = refsd.get('roles')
-        # roles will have instances of Role that will filled by the mapper
-        self.roles = []
+        self.roles = refsd.get('roles')
 
     def serialize(self):
         return dict(name=self.name,
                     order=self.order,
-                    rolerefs=self.rolerefs,
-                    instance=self.instanced,
-                    roles=[r.serialize() for r in self.roles if r])
+                    roles=self.roles,
+                    instance=self.instanced)
 
 
 

@@ -525,7 +525,11 @@ class EasyEC2(EasyAWS):
         else:
             reservation = self.conn.run_instances(image_id, **shared_kwargs)
 
-        # apply tags if given
+        # wait for the instances to show up in AWS API else future calls on
+        # the instances will fail
+        self.wait_for_propagation(instances=reservation.instances)
+
+        # apply tags if given.
         if reservation and tags:
             for instance in reservation.instances:
                 for (key, value) in tags.items():
@@ -570,16 +574,15 @@ class EasyEC2(EasyAWS):
             reqs_ids = [req.id for req in reqs]
             num_reqs = len(reqs)
             if num_reqs != num_objs:
-                self.log.debug("%d: only %d/%d %s have "
-                          "propagated - sleeping..." %
-                          (i, num_reqs, num_objs, obj_name))
+                self.log.debug("%d: only %d/%d %s have " "propagated - sleeping..." %
+                               (i, num_reqs, num_objs, obj_name))
                 if i != max_retries:
-                    time.sleep(interval)
+                    taskpool.doyield(interval)
             else:
                 return
 
         missing = [oid for oid in obj_ids if oid not in reqs_ids]
-        raise exception.PropagationException(
+        raise exception.AWSPropogationException(
             "Failed to fetch %d/%d %s after %d seconds: %s" %
             (num_reqs, num_objs, obj_name, max_retries * interval,
              ', '.join(missing)))

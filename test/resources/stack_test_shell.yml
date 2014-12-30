@@ -5,8 +5,13 @@ apspec:
   infrastructure: aws
   org: contoso.com
   domain: dev.marketing.contoso.com
-  name: testrun1
-  description: "stack spec for testrun1"
+  name: hadoop-base
+  version: 1.0
+  description: "stack spec for hadoop-base"
+  deploy:
+        git: https://github.com/opencognitions/fortestsonly.git
+        branch: master
+        metafile: meta_sh.yml
   role-groups:
     hdfs:
       order: 1

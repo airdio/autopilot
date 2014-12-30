@@ -5,14 +5,17 @@ apspec:
   infrastructure: aws
   org: contoso.com
   domain: dev.marketing.contoso.com
-  name: testrun1
+  name: hadoop-base
   description: "stack spec for testrun1"
+  deploy:
+    git: https://github.com/opencognitions/fortestsonly.git
+    branch: master
   role-groups:
     hdfs:
       order: 1
       instance:
-        id: ami-a25415cb
-        type: m3.medium
+        id: ami-a8d369c0
+        type: t2.micro
         count: 1
         key_pair: ocg-test
         routable: true

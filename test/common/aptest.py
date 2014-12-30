@@ -90,15 +90,8 @@ class APtest(unittest.TestCase):
         execute_future = executor.execute()
         execute_future.wait(timeout=timeout)
 
-    def create_specs(self, rspec_file, sspec_file):
-        rspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org",
-                            self.openf(rspec_file))
-        sspec = Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org",
-                            self.openf(sspec_file))
-        for key, group in sspec.groups.items():
-            for role_ref in group.rolerefs:
-                group.roles.append(rspec.roles.get(role_ref))
-        return rspec, sspec
+    def create_specs(self, sspec_file):
+        Apspec.load(ApEnv(), "contoso.org", "dev.marketing.contoso.org", self.openf(sspec_file))
 
     def get_unique_wf_id(self):
         return str(uuid.uuid4())

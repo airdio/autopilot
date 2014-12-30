@@ -21,3 +21,15 @@ echo "mysql-server-5.5 mysql-server/root_password_again password root" | debconf
 apt-get -y install mysql-server-5.5
 
 
+repo:
+      autopilot:
+          stack:
+            role1:
+            role2:
+            role4:
+                cookbooks
+                setup.sh
+
+
+root_dir/
+root_dir/meta

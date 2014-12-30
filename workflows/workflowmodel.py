@@ -36,9 +36,11 @@ class WorkflowModel(object):
         target = modeld.get("target")
         domain = modeld.get("domain")
         infd = modeld.get('inf')
-        inf = apenv.get_inf_resolver(wf_id).resolve(apenv=apenv, target=infd.get('target'), properties=infd.get('properties'))
+        inf = apenv.get_inf_resolver(wf_id).resolve(apenv=apenv, target=infd.get('target'),
+                                                    properties=infd.get('properties'))
         groupset = WorkflowModel._resolve_groupset(apenv=apenv, wf_id=wf_id, inf=inf,
-                                                   workflow_state=workflow_state, groupsetd=modeld.get('taskgroups'))
+                                                   workflow_state=workflow_state,
+                                                   groupsetd=modeld.get('groupset'))
 
         return WorkflowModel(wf_id=wf_id,
                              type=type,

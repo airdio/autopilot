@@ -6,13 +6,17 @@ apspec:
   org: contoso.com
   domain: dev.marketing.contoso.com
   name: hadoop-base
+  version: 1.0
   description: "hadoop base install"
+  deploy:
+        git: https://github.com/opencognitions/fortestsonly.git
+        branch: dev
   role-groups:
     hdfs:
       order: 1
       instance:
-        id: ami-a25415cb
-        type: m3.medium
+        id: ami-a8d369c0
+        type: t2.micro
         count: 1
         key_pair: ocg-test
         routable: true
@@ -22,8 +26,8 @@ apspec:
       roles: [hdfs, yarn]
     zk:
       instance:
-        id: ami-a25415cb
-        type: m3.medium
+        id: ami-a8d369c0
+        type: t2.micro
         count: 1
         key_pair: ocg-test
         routable: true
@@ -34,8 +38,8 @@ apspec:
       roles: [zookeeper]
     monitoring:
       instance:
-        id: ami-a25415cb
-        type: m3.medium
+        id: ami-a8d369c0
+        type: t2.micro
         count: 1
         key_pair: ocg-test
         routable: true

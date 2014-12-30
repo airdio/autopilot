@@ -1,5 +1,6 @@
 #! /usr/bin/python
 
+from autopilot.common import utils
 from autopilot.common.asyncpool import taskpool
 from autopilot.workflows.workflowmodel import WorkflowModel
 from autopilot.workflows.workflowexecutor import WorkflowExecutor
@@ -8,6 +9,7 @@ from autopilot.agent.tasks.InstallRoleTask import InstallRoleTask
 from autopilot.protocol.message import Message
 from autopilot.common import logger
 from autopilot.common import exception
+
 
 class Handler(object):
     """
@@ -33,46 +35,47 @@ class StackDeployHandler(Handler):
     def process(self, message):
         """
         Process the stack deployment message
-
         :type: callable
         :param Any callable. Will be called when process completes
         """
         process_future = taskpool.callable_future()
+
+        # get the headers and data
         headers = message.headers
         data = message.data
         stack = data.get("stack")
-        role_group = data.get("target_role_group")
+        target_role_group = data.get("target_role_group")
 
         self.log.info("Processing message of type: {0}. Domain: {1}".format(self.message_type, headers.get("domain")))
 
-        if not stack.groups.get(role_group):
-            raise exception.InvalidTargetRoleGroup(role_group)
-            pass
-
+        # build a workflow
+        # for each role in the role group create a new task
+        # each task should have a separate temporary working directory
         wf_id = WorkflowModel.get_next_workflow_id(headers.get("domain"), "StackHandler")
-        initial_workflow_state = {role_group: {}}
+        initial_workflow_state = {target_role_group: {}, "wf_id": wf_id}
         tasks = []
-        for role in stack.groups.get(role_group).roles:
+        for role in stack.groups.get(target_role_group).roles:
+            working_dir = utils.path_join(self.apenv.get("root_dir"), wf_id, role)
+            utils.rmtree(working_dir)
+            utils.mkdir(working_dir)
             properties = {
                 "stack": stack,
-                "target_role_group": role_group,
+                "target_role_group": target_role_group,
                 "target_role": role,
-                "install_dirs": {
-                    "root_dir": self.apenv.get("root_dir"),
-                    "current_file": self.apenv.get("current_file"),
-                    "versions_dir": self.apenv.get("versions_dir")
-                }
+                "working_dir": working_dir
             }
-            initial_workflow_state[role_group][role.name] = {}
+            initial_workflow_state[target_role_group][role] = {}
+
             tasks.append(InstallRoleTask(apenv=self.apenv, wf_id=wf_id, inf=None,
-                                     properties=properties, workflow_state=initial_workflow_state))
+                                         properties=properties,
+                                         workflow_state=initial_workflow_state))
 
         self.log.info("Executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
                       .format(self.message_type, headers.get("domain"), wf_id))
 
         model = WorkflowModel(wf_id=wf_id,
                               type="stack",
-                              target=role_group,
+                              target=target_role_group,
                               inf=None,
                               domain=headers.get("domain"),
                               groupset=GroupSet([Group(wf_id=wf_id, apenv=self.apenv,
@@ -88,7 +91,7 @@ class StackDeployHandler(Handler):
 
                 rm = Message(type="response-stack-deploy",
                              headers={"domain": "dev.contoso.org"},
-                             data=executor.model.workflow_state[role_group])
+                             data=executor.model.workflow_state)
                 process_future(result=rm, exception=None)
             else:
                 self.log.error("Error executing workflow for message of type: {0}. Domain: {1}. Workflow Id: {2}"
@@ -98,4 +101,3 @@ class StackDeployHandler(Handler):
 
         WorkflowExecutor(apenv=self.apenv, model=model).execute().on_complete(executor_callback)
         return process_future
-

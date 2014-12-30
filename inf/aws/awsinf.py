@@ -25,12 +25,13 @@ class AwsInfProvisionResponseContext(AWSInfResponseContext):
     def __init__(self, spec, reservation=None):
         AWSInfResponseContext.__init__(self, spec=spec)
         self.reservation = reservation
-        self.log = logger.get_logger("ResponseContext")
+        self.log = logger.get_logger("AwsInfProvisionResponseContext")
 
     def all_instances_in_state(self, state="running"):
         for instance in self.reservation.instances:
             instance.update()
             # if any instance is pending return True
+            self.log.debug("Instance {0} in state {1}".format(instance.id, instance.state))
             if instance.state != state:
                 return False
         return True

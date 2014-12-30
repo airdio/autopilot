@@ -40,9 +40,11 @@ class TaskResult(object):
         self.messages = []
         self.result_data = {}
 
-    def update(self, next_state, messages=[], exceptions=[]):
-        self.messages.extend(messages)
-        self.exceptions.extend(exceptions)
+    def update(self, next_state, messages=None, exceptions=None):
+        if messages:
+            self.messages.extend(messages)
+        if exceptions:
+            self.exceptions.extend(exceptions)
         if self.state != next_state:
             self.state = next_state
             self.state_change_stack.append(next_state)
@@ -71,7 +73,7 @@ class Task(object):
     def serialize(self):
         return dict(name=self.name, properties={})
 
-    # don't override this. Override process_run
+    # don't override this. Override on_run
     def run(self, callback=None):
         self.starttime = utils.get_utc_now_seconds()
         if self.result.state is not TaskState.Initialized:
@@ -87,13 +89,15 @@ class Task(object):
             if callback:
                 callback(self)
 
-        self.result.update(TaskState.Started, ["Task {0} Started".format(self.name)])
+        self.result.update(TaskState.Started, messages=["Task {0} Started".format(self.name)])
 
         self.log.info(wf_id=self.wf_id, msg="begin task run: {0}".format(self.name))
+
         try:
             self.on_run(_run_callback)
         except Exception as ex:
-            self.log.error(wf_id=self.wf_id, msg="Error executing task: {0}".format(self.name), exc_info=ex)
+            self.log.error(wf_id=self.wf_id, msg="Error executing task: {0}".format(self.name),
+                           exc_info=ex)
             _run_callback(TaskState.Error, [], [ex])
 
     # don't override this. Override process_rollback

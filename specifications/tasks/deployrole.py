@@ -67,10 +67,10 @@ class DeployRole(Task):
             mrole_groups[target_role_group_name] = rc_instances.spec
 
         # verify if agents are running on each instance
-        self._verify_instance_agents()
+        self._wait_for_instance_agents()
 
         # call into the agents and deploy the role
-        self._install_role()
+        self._install_roles()
 
         callback(TaskState.Done, ["Task {0} done".format(self.name)], [])
 
@@ -80,13 +80,13 @@ class DeployRole(Task):
         """
         pass
 
-    def _verify_instance_agents(self, instances=[]):
+    def _wait_for_instance_agents(self, instances=[]):
         """
-        Check if agents are installed on the instances
+        Check if instances are up and agents have been registered
         """
         pass
 
-    def _install_role(self):
+    def _install_roles(self):
         """
          1. Setup the environment parameters
             - Current role parameters

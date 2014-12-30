@@ -3,10 +3,10 @@
 
 class StackStore(object):
 
-    def __init__(self, db):
-        self.db = db
-        pass
+    def __init__(self, org, domain):
+        self.org = org
+        self.domain = domain
 
-    def get_stack(self, account, stack_name):
+    def get_stack(self, stack_name):
         pass
 

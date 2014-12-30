@@ -1,84 +1,122 @@
 {
-    "wf_id": "wf_id1",
-    "type": "stack",
-    "target": "aptest",
-    "timestamp": 123214334,
-    "owner": "sujeetv",
-    "org": "myfoo.com",
-    "domain": "dev.marketing.myfoo.com",
-    "inf": {
-        "target": "aws",
-        "properties": {}
-    },
-    "execution_flags": ["atomic"],
-    "taskgroups": [
+  "wf_id": "wf_id1",
+  "domain": "dev.marketing.contoso.org",
+  "groupset": [
     {
-        "groupid": "domain_init",
-        "tasks":[{
-            "name": "DomainInit",
-            "properties": {
-                "domain": "dev.marketing.myfoo.com"
-            }
-        }]
+      "tasks": [
+        {
+          "properties": {
+            "domain": "dev.marketing.contoso.org"
+          },
+          "name": "DomainInit"
+        }
+      ],
+      "groupid": "domain_init"
     },
     {
-        "groupid": "stack_init",
-        "tasks":[{
-            "name": "StackInit",
-            "properties": {
-                "stack": "aptest"
-            }
-        }]
+      "tasks": [
+        {
+          "properties": {
+            "stack": "hadoop-base"
+          },
+          "name": "StackInit"
+        }
+      ],
+      "groupid": "stack_init"
     },
     {
-        "groupid": "deploy_roles",
-        "tasks": [{
-            "name": "DeployRole",
-            "properties": {
-                "stack": "aptest",
-                "domain": "dev.marketing.myfoo.com",
-                "role_group": "mysql",
-                "role": "mysql.dev.marketing.myfoo.com",
-                "instance_count": 1,
-                "instance_type": "m3.medium",
-                "image_id":"ami-a25415cb",
-                "key_pair_name": "ocg-test",
-                "version": "1.0",
-                "repository": {
-                    "type": "git",
-                    "url": "https://www.github.com/myfoo/mysql",
-                    "branch": "master",
-                    "revision": "9ccf"
+      "tasks": [
+        {
+          "properties": {
+            "role_group": {
+              "instance": {
+                "count": 1,
+                "routable": true,
+                "key_pair": "ocg-test",
+                "tags": {
+                  "type": "data_science"
                 },
-                "network": {
-                    "ports": [3306],
-                    "public_ip": true
-                }
+                "type": "m3.medium",
+                "ports": [
+                  50070,
+                  8032
+                ],
+                "id": "ami-a25415cb"
+              },
+              "order": 1,
+              "roles": [
+                "hdfs",
+                "yarn"
+              ],
+              "name": "hdfs"
             }
+          },
+          "name": "DeployRole"
+        }
+      ],
+      "groupid": "ordered_deploy_roles_1"
+    },
+    {
+      "tasks": [
+        {
+          "properties": {
+            "role_group": {
+              "instance": {
+                "count": 1,
+                "routable": true,
+                "key_pair": "ocg-test",
+                "type": "m3.medium",
+                "ports": [
+                  7172
+                ],
+                "id": "ami-a25415cb"
+              },
+              "order": null,
+              "roles": [
+                "ganglia"
+              ],
+              "name": "monitoring"
+            }
+          },
+          "name": "DeployRole"
         },
         {
-            "name": "DeployRole",
-            "properties": {
-                "stack": "aptest",
-                "domain": "dev.marketing.myfoo.com",
-                "role_group": "mongodb",
-                "role": "mongodb.dev.marketing.myfoo.com",
-                "version": "1.0",
-                "instance_count": 1,
-                "instance_type": "m3.medium",
-                "image_id":"ami-a25415cb",
-                "key_pair_name": "ocg-test",
-                "repository": {
-                    "type": "git",
-                    "url": "https://www.github.com/myfoo/mongodb",
-                    "branch": "master",
-                    "revision": "9ccf"
+          "properties": {
+            "role_group": {
+              "instance": {
+                "count": 1,
+                "routable": true,
+                "key_pair": "ocg-test",
+                "tags": {
+                  "ephemeral": true,
+                  "target": "global"
                 },
-                "network": {
-                    "ports": [27017],
-                    "public_ip": true
-                }
+                "type": "m3.medium",
+                "ports": [
+                  2181
+                ],
+                "id": "ami-a25415cb"
+              },
+              "order": null,
+              "roles": [
+                "zookeeper"
+              ],
+              "name": "zk"
             }
-        }]
-    }]
+          },
+          "name": "DeployRole"
+        }
+      ],
+      "groupid": "parallel_deploy_roles"
+    }
+  ],
+  "target": "hadoop-base",
+  "inf": {
+    "properties": {
+      "aws_secret_key": "",
+      "aws_access_key": ""
+    },
+    "target": "aws"
+  },
+  "type": "stack.deploy"
 }

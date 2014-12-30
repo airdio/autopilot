@@ -4,6 +4,7 @@ apspec:
     type: roles
     org: contoso.com
     domain: dev.marketing.contoso.com
+    stack: hadoop-base
     roles:
         hdfs:
           version: 2.4
