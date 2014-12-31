@@ -24,7 +24,8 @@ class InstallRoleTask(Task):
         self.stack_name = self.stack.name
         self.role_groups = self.stack.groups
 
-        self.working_dir = properties.get("working_dir")
+        self.role_working_dir = properties.get("role_working_dir")
+        self.role_status_dir = properties.get("role_status_dir")
 
     def on_run(self, callback):
         self.log.info("Installing target role {0} for role_group {1}"
@@ -32,10 +33,10 @@ class InstallRoleTask(Task):
 
         try:
             self.log.info("Running GitInstaller for role: {0}. Working dir: {1}"
-                          .format(self.target_role, self.working_dir), self.wf_id)
+                          .format(self.target_role, self.role_working_dir), self.wf_id)
 
             GitInstallProvider(self.apenv, self.target_role, self.target_role_group,
-                               self.stack, self.working_dir).run()
+                               self.stack, self.role_working_dir).run()
 
             self._update_current_version_file()
 
@@ -46,9 +47,10 @@ class InstallRoleTask(Task):
             raise
 
     def _update_current_version_file(self):
-        version_file_path = utils.path_join(self.working_dir, "autopilot",
-                                            self.stack_name, "current")
+        version_file_path = utils.path_join(self.role_working_dir, "current")
         with open(version_file_path, 'w') as f:
             f.write(self.stack.name + '\n')
             f.write(self.target_role_group + '\n')
             f.write(self.target_role + '\n')
+        # copy to the status path
+        utils.cpfile(version_file_path, utils.path_join(self.role_status_dir, "current"))

@@ -106,7 +106,7 @@ class APtest(unittest.TestCase):
 
     def mkdir(self, path):
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
 
     def listfiles(self, path):
         return os.listdir(path)

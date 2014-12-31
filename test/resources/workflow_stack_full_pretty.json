@@ -1,0 +1,112 @@
+{
+    "domain": {
+        "spec": {
+            "domain": "dev.marketing.myfoo.com",
+            "internet_gateway_id": "igw-96bd78f3",
+            "vpc_id": "vpc-c19f44a4"
+        }
+    },
+    "role_groups": {
+        "mongodb": {
+            "network": {
+                "interfaces": [
+                    {
+                        "private_dns_name": "ip-10-0-0-21.ec2.internal",
+                        "private_ip_address": "10.0.0.21",
+                        "public_dns_name": "ec2-54-209-142-136.compute-1.amazonaws.com",
+                        "public_ip_address": "54.209.142.136"
+                    }
+                ],
+                "subnet_id": "subnet-e507ff92",
+                "vpc_id": "vpc-c19f44a4"
+            },
+            "spec": {
+                "associate_public_ip": true,
+                "auth_spec": [
+                    {
+                        "from": 27017,
+                        "protocol": "tcp",
+                        "to": 27017
+                    }
+                ],
+                "image_id": "ami-a25415cb",
+                "instance_count": 1,
+                "instance_type": "m3.medium",
+                "key_pair_name": "ocg-test",
+                "network": {
+                    "interfaces": [
+                        {
+                            "private_dns_name": "ip-10-0-0-21.ec2.internal",
+                            "private_ip_address": "10.0.0.21",
+                            "public_dns_name": "ec2-54-209-142-136.compute-1.amazonaws.com",
+                            "public_ip_address": "54.209.142.136"
+                        }
+                    ],
+                    "subnet_id": "subnet-e507ff92",
+                    "vpc_id": "vpc-c19f44a4"
+                },
+                "reservation": "Reservation:r-b8e7c4c7",
+                "security_group_ids": [
+                    "sg-d1c0b3b4"
+                ],
+                "uname": "aptest.mongodb.dev.marketing.myfoo.com"
+            }
+        },
+        "mysql": {
+            "network": {
+                "interfaces": [
+                    {
+                        "private_dns_name": "ip-10-0-0-118.ec2.internal",
+                        "private_ip_address": "10.0.0.118",
+                        "public_dns_name": "ec2-54-209-32-114.compute-1.amazonaws.com",
+                        "public_ip_address": "54.209.32.114"
+                    }
+                ],
+                "subnet_id": "subnet-e507ff92",
+                "vpc_id": "vpc-c19f44a4"
+            },
+            "spec": {
+                "associate_public_ip": true,
+                "auth_spec": [
+                    {
+                        "from": 3306,
+                        "protocol": "tcp",
+                        "to": 3306
+                    }
+                ],
+                "image_id": "ami-a25415cb",
+                "instance_count": 1,
+                "instance_type": "m3.medium",
+                "key_pair_name": "ocg-test",
+                "network": {
+                    "interfaces": [
+                        {
+                            "private_dns_name": "ip-10-0-0-118.ec2.internal",
+                            "private_ip_address": "10.0.0.118",
+                            "public_dns_name": "ec2-54-209-32-114.compute-1.amazonaws.com",
+                            "public_ip_address": "54.209.32.114"
+                        }
+                    ],
+                    "subnet_id": "subnet-e507ff92",
+                    "vpc_id": "vpc-c19f44a4"
+                },
+                "reservation": "Reservation:r-b3e6c5cc",
+                "security_group_ids": [
+                    "sg-d6c0b3b3"
+                ],
+                "uname": "aptest.mysql.dev.marketing.myfoo.com"
+            }
+        }
+    },
+    "stack": {
+        "spec": {
+            "subnets": [
+                {
+                    "route_association_id": "rtbassoc-3476db51",
+                    "route_table_id": "rtb-1462bb71",
+                    "subnet_id": "subnet-e507ff92"
+                }
+            ]
+        }
+    }
+}

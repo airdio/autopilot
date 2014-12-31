@@ -1,0 +1,134 @@
+{
+    "domain": "dev.marketing.contoso.org",
+    "groupset": [
+        {
+            "groupid": "domain_init",
+            "tasks": [
+                {
+                    "name": "DomainInit",
+                    "properties": {
+                        "domain": "dev.marketing.contoso.org"
+                    }
+                }
+            ]
+        },
+        {
+            "groupid": "stack_init",
+            "tasks": [
+                {
+                    "name": "StackInit",
+                    "properties": {
+                        "stack": "hadoop-base"
+                    }
+                }
+            ]
+        },
+        {
+            "groupid": "ordered_deploy_roles_1",
+            "tasks": [
+                {
+                    "name": "DeployRole",
+                    "properties": {
+                        "role_group": {
+                            "instance": {
+                                "count": 5,
+                                "id": "ami-a25415cb",
+                                "type": "m3.4xlarge"
+                            },
+                            "name": "hdfs",
+                            "order": 1,
+                            "rolerefs": [
+                                "hdfs",
+                                "yarn"
+                            ],
+                            "roles": [
+                                {
+                                    "deploy": {
+                                        "branch": "dev",
+                                        "git": "https://www.github.com/contoso/marketing/hdfs",
+                                        "start": "start.sh",
+                                        "stop": "stop.sh"
+                                    },
+                                    "name": "hdfs",
+                                    "version": 2.4
+                                },
+                                {
+                                    "deploy": {
+                                        "branch": "dev",
+                                        "git": "https://www.github.com/contoso/marketing/yarn",
+                                        "start": "start.sh",
+                                        "stop": "stop.sh"
+                                    },
+                                    "name": "yarn",
+                                    "version": 2.0
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "groupid": "parallel_deploy_roles",
+            "tasks": [
+                {
+                    "name": "DeployRole",
+                    "properties": {
+                        "role_group": {
+                            "instance": {
+                                "count": 1,
+                                "id": "ami-a25415cb",
+                                "type": "m3.2xlarge"
+                            },
+                            "name": "monitoring",
+                            "order": null,
+                            "rolerefs": [
+                                "ganglia"
+                            ],
+                            "roles": []
+                        }
+                    }
+                },
+                {
+                    "name": "DeployRole",
+                    "properties": {
+                        "role_group": {
+                            "instance": {
+                                "count": 3,
+                                "id": "ami-a25415cb",
+                                "type": "m3.2xlarge"
+                            },
+                            "name": "zk",
+                            "order": null,
+                            "rolerefs": [
+                                "zookeeper"
+                            ],
+                            "roles": [
+                                {
+                                    "deploy": {
+                                        "branch": "dev",
+                                        "git": "https://www.github.com/contoso/marketing/zk",
+                                        "start": "start.sh",
+                                        "stop": "stop.sh"
+                                    },
+                                    "name": "zookeeper",
+                                    "version": 2.0
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "inf": {
+        "properties": {
+            "aws_access_key": "",
+            "aws_secret_key": ""
+        },
+        "target": "aws"
+    },
+    "target": "hadoop-base",
+    "type": "stack.deploy",
+    "wf_id": "155b470f-1680-4867-bd59-8246a7ddf748"
+}

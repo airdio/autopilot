@@ -3,6 +3,7 @@
 
 
 import os
+import shutil
 from autopilot.common.asyncpool import taskpool
 
 import re
@@ -570,13 +571,16 @@ def get_class(kls):
     return m
 
 def rmtree(path):
-    import shutil
     if os.path.exists(path):
         shutil.rmtree(path)
 
 def mkdir(path):
     if not path_exists(path):
         os.makedirs(path)
+
+def cpfile(src_path, target_path):
+    if path_exists(src_path):
+        shutil.copy(src_path, target_path)
 
 def path_join(path, *paths):
     return os.path.join(path, *paths)

@@ -8,7 +8,6 @@ from autopilot.workflows.tasks.group import Group, GroupSet
 from autopilot.agent.tasks.InstallRoleTask import InstallRoleTask
 from autopilot.protocol.message import Message
 from autopilot.common import logger
-from autopilot.common import exception
 
 
 class Handler(object):
@@ -25,7 +24,8 @@ class Handler(object):
 
 class StackDeployHandler(Handler):
     """
-    Handle stack install
+    Handle stack install message from the client
+    Create a workflow with deploy role tasks
     """
     def __init__(self, apenv, message_type):
         Handler.__init__(self, apenv, message_type)
@@ -55,14 +55,17 @@ class StackDeployHandler(Handler):
         initial_workflow_state = {target_role_group: {}, "wf_id": wf_id}
         tasks = []
         for role in stack.groups.get(target_role_group).roles:
-            working_dir = utils.path_join(self.apenv.get("root_dir"), wf_id, role)
-            utils.rmtree(working_dir)
-            utils.mkdir(working_dir)
+            role_working_dir = utils.path_join(self.apenv.get("WORKING_DIR"), stack.name, wf_id, role)
+            role_status_dir = utils.path_join(self.apenv.get("STATUS_DIR"), stack.name, role)
+            utils.rmtree(role_working_dir)
+            utils.mkdir(role_working_dir)
+            utils.mkdir(role_status_dir)
             properties = {
                 "stack": stack,
                 "target_role_group": target_role_group,
                 "target_role": role,
-                "working_dir": working_dir
+                "role_working_dir": role_working_dir,
+                "role_status_dir": role_status_dir
             }
             initial_workflow_state[target_role_group][role] = {}
 

@@ -480,8 +480,7 @@ class EasyEC2(EasyAWS):
                 bdt = img.block_device_mapping.get(dev)
                 if not bdt.ephemeral_name and dev in bdmap:
                     self.log.debug("EBS volume already mapped to %s by AMI" % dev)
-                    self.log.debug("Removing %s from runtime block device map" %
-                              dev)
+                    self.log.debug("Removing %s from runtime block device map" % dev)
                     bdmap.pop(dev)
             if img.root_device_name in img.block_device_mapping:
                 self.log.debug("Forcing delete_on_termination for AMI: %s" % img.id)
